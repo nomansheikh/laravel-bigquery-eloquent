@@ -2,10 +2,10 @@
 
 namespace NomanSheikh\LaravelBigqueryEloquent;
 
+use NomanSheikh\LaravelBigqueryEloquent\Commands\LaravelBigqueryEloquentCommand;
 use NomanSheikh\LaravelBigqueryEloquent\Database\BigQueryConnection;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use NomanSheikh\LaravelBigqueryEloquent\Commands\LaravelBigqueryEloquentCommand;
 
 class LaravelBigqueryEloquentServiceProvider extends PackageServiceProvider
 {
@@ -32,8 +32,8 @@ class LaravelBigqueryEloquentServiceProvider extends PackageServiceProvider
             // Merge config/bigquery.php defaults
             $config = array_merge([
                 'project_id' => config('bigquery.project_id'),
-                'key_file'   => config('bigquery.key_file'),
-                'dataset'    => config('bigquery.dataset'),
+                'key_file' => config('bigquery.key_file'),
+                'dataset' => config('bigquery.dataset'),
             ], $config);
 
             return new BigQueryConnection($config);

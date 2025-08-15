@@ -13,6 +13,7 @@ class BigQueryGrammar extends MySqlGrammar
 
         if (stripos($table, ' as ') !== false) {
             [$name, $alias] = preg_split('/\s+as\s+/i', $table);
+
             return $this->wrapFullyQualified($name).' as '.$this->wrap($alias);
         }
 
@@ -26,6 +27,7 @@ class BigQueryGrammar extends MySqlGrammar
     protected function wrapFullyQualified(string $name): string
     {
         $trim = trim($name, '`');
+
         return '`'.$trim.'`';
     }
 }

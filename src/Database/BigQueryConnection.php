@@ -11,16 +11,18 @@ use RuntimeException;
 class BigQueryConnection extends Connection
 {
     protected BigQueryClient $client;
+
     protected string $projectId;
+
     protected string $dataset;
 
     public function __construct(array $config)
     {
         $this->projectId = (string) ($config['project_id'] ?? '');
-        $this->dataset   = (string) ($config['dataset'] ?? '');
+        $this->dataset = (string) ($config['dataset'] ?? '');
 
         $this->client = new BigQueryClient([
-            'projectId'   => $this->projectId,
+            'projectId' => $this->projectId,
             'keyFilePath' => (string) ($config['key_file'] ?? ''),
         ]);
 
@@ -64,6 +66,7 @@ class BigQueryConnection extends Connection
         foreach ($result as $row) {
             $rows[] = (array) $row;
         }
+
         return $rows;
     }
 
