@@ -20,19 +20,16 @@ class BigQueryGrammar extends MySqlGrammar
      */
     public function wrapTable($table, $prefix = null): float|int|string|Expression
     {
-        $table = ltrim($table, $prefix);
-
-        if (stripos($table, ' as ') !== false) {
-            [$name, $alias] = preg_split('/\s+as\s+/i', $table);
-
-            return $this->wrapFullyQualified($name).' as '.$this->wrap($alias);
+        if ($table instanceof Expression) {
+            return $this->getValue($table);
         }
 
-        if (substr_count($table, '.') >= 2) {
-            return $this->wrapFullyQualified($table);
+        // Skip wrapping if already fully qualified
+        if (str_contains($table, '.')) {
+            return $table;
         }
 
-        return parent::wrapTable($table);
+        return "`{$table}`";
     }
 
     /**
