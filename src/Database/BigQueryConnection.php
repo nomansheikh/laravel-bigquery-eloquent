@@ -6,25 +6,32 @@ use Google\Cloud\BigQuery\BigQueryClient;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Processors\Processor;
 use NomanSheikh\LaravelBigqueryEloquent\Database\Query\Grammars\BigQueryGrammar;
+use PDO;
 use RuntimeException;
 
 class BigQueryConnection extends Connection
 {
     protected BigQueryClient $client;
+
     protected string $projectId;
+
     protected string $dataset;
 
     public function __construct(array $config)
     {
         $this->projectId = (string) ($config['project_id'] ?? '');
-        $this->dataset   = (string) ($config['dataset'] ?? '');
+        $this->dataset = (string) ($config['dataset'] ?? '');
 
         $this->client = new BigQueryClient([
-            'projectId'   => $this->projectId,
+            'projectId' => $this->projectId,
             'keyFilePath' => (string) ($config['key_file'] ?? ''),
         ]);
 
-        $pdoResolver = function () {};
+        $pdoResolver = function (): PDO {
+            // This will never be called for BigQuery, just satisfies the type
+            throw new \RuntimeException('BigQuery does not use PDO.');
+        };
+
         parent::__construct($pdoResolver, '', '', $config);
     }
 
@@ -64,6 +71,7 @@ class BigQueryConnection extends Connection
         foreach ($result as $row) {
             $rows[] = (array) $row;
         }
+
         return $rows;
     }
 

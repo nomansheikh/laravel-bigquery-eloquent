@@ -16,8 +16,8 @@ abstract class BigQueryModel extends Model
         $table = $this->table ?: Str::snake(Str::pluralStudly(class_basename(static::class)));
 
         $connName = $this->getConnectionName() ?: $this->connection;
-        $dataset  = $this->dataset ?? config("database.connections.{$connName}.dataset");
-        $project  = config("database.connections.{$connName}.project_id");
+        $dataset = $this->dataset ?? config("database.connections.{$connName}.dataset");
+        $project = config("database.connections.{$connName}.project_id");
 
         return "{$project}.{$dataset}.{$table}";
     }
@@ -25,6 +25,7 @@ abstract class BigQueryModel extends Model
     public function setDataset(string $dataset): static
     {
         $this->dataset = $dataset;
+
         return $this;
     }
 }

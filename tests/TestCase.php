@@ -3,8 +3,8 @@
 namespace NomanSheikh\LaravelBigqueryEloquent\Tests;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Orchestra\Testbench\TestCase as Orchestra;
 use NomanSheikh\LaravelBigqueryEloquent\LaravelBigqueryEloquentServiceProvider;
+use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
 {
@@ -33,5 +33,16 @@ class TestCase extends Orchestra
             (include $migration->getRealPath())->up();
          }
          */
+    }
+
+    protected function defineEnvironment($app): void
+    {
+        $app['config']->set('database.default', 'bigquery');
+
+        $app['config']->set('database.connections.bigquery', [
+            'driver' => 'bigquery',
+            'project_id' => 'test-project',
+            'dataset' => 'default_dataset',
+        ]);
     }
 }

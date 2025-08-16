@@ -1,69 +1,83 @@
 # Laravel BigQuery Eloquent
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/nomansheikh/laravel-bigquery-eloquent.svg?style=flat-square)](https://packagist.org/packages/nomansheikh/laravel-bigquery-eloquent)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/nomansheikh/laravel-bigquery-eloquent/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/nomansheikh/laravel-bigquery-eloquent/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/nomansheikh/laravel-bigquery-eloquent/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/nomansheikh/laravel-bigquery-eloquent/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/nomansheikh/laravel-bigquery-eloquent.svg?style=flat-square)](https://packagist.org/packages/nomansheikh/laravel-bigquery-eloquent)  
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/nomansheikh/laravel-bigquery-eloquent/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/nomansheikh/laravel-bigquery-eloquent/actions?query=workflow%3Arun-tests+branch%3Amain)  
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/nomansheikh/laravel-bigquery-eloquent/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/nomansheikh/laravel-bigquery-eloquent/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)  
 [![Total Downloads](https://img.shields.io/packagist/dt/nomansheikh/laravel-bigquery-eloquent.svg?style=flat-square)](https://packagist.org/packages/nomansheikh/laravel-bigquery-eloquent)
 
-A Laravel package that provides seamless integration between Google BigQuery and Laravel's Eloquent ORM. Query BigQuery tables using familiar Eloquent syntax while leveraging BigQuery's powerful analytics capabilities.
+---
+
+## Overview
+
+**Laravel BigQuery Eloquent** is a Laravel package that seamlessly integrates Google BigQuery with Laravel's Eloquent ORM. It enables you to query BigQuery tables using familiar Eloquent syntax, simplifying analytics and data querying directly within your Laravel applications.
+
+---
 
 ## Features
 
-- **Eloquent Integration**: Use BigQuery tables with Laravel's Eloquent ORM
-- **Custom BigQuery Connection**: Dedicated database driver for BigQuery
-- **Fully Qualified Table Names**: Automatic handling of `project.dataset.table` format
-- **Query Grammar**: Custom SQL grammar optimized for BigQuery syntax
-- **Read-Only Operations**: Currently supports read operations (SELECT queries)
-- **Flexible Authentication**: Supports both Application Default Credentials (ADC) and service account key files
-- **Environment Configuration**: Easy setup with environment variables
+- **Eloquent Integration**: Use BigQuery tables as Eloquent models.
+- **Dedicated BigQuery Driver**: Optimized database driver for BigQuery.
+- **Automatic Fully Qualified Table Names**: Handles `project.dataset.table` formatting transparently.
+- **Custom Query Grammar**: Generates SQL optimized for BigQuery syntax.
+- **Read-Only Support**: Supports SELECT queries (read operations only).
+- **Flexible Authentication**: Supports Application Default Credentials (ADC) and service account key files.
+- **Environment Configuration**: Easy setup via environment variables.
+
+---
 
 ## Requirements
 
-- PHP 8.3+
-- Laravel 10.0+ / 11.0+ / 12.0+
-- Google Cloud BigQuery API access
+- PHP 8.3 or higher
+- Laravel 10.x, 11.x, or 12.x
+- Access to Google Cloud BigQuery API
 - Google Cloud authentication (Application Default Credentials recommended)
+
+---
 
 ## Installation
 
-You can install the package via composer:
+Install the package via Composer:
 
 ```bash
 composer require nomansheikh/laravel-bigquery-eloquent
 ```
 
+---
+
 ## Configuration
 
 ### 1. Publish the configuration file
 
+Run the following Artisan command to publish the package config:
+
 ```bash
-php artisan vendor:publish --tag="laravel-bigquery-eloquent-config"
+php artisan vendor:publish --provider="NomanSheikh\LaravelBigqueryEloquent\LaravelBigqueryEloquentServiceProvider"
 ```
 
-### 2. Set up authentication
+### 2. Authentication Setup
 
-The package supports multiple authentication methods following Google Cloud's authentication hierarchy:
+The package supports Google Cloud's recommended authentication hierarchy:
 
-**Recommended: Application Default Credentials (ADC)**
-- For local development: Run `gcloud auth application-default login`
-- For production: Use service account attached to your compute instance or set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+- **Recommended: Application Default Credentials (ADC)**
+  - Local development: Run `gcloud auth application-default login`
+  - Production: Use a service account attached to your compute instance or set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
 
-**Alternative: Service Account Key File**
-- Download a service account key JSON file from Google Cloud Console
-- Set the `BIGQUERY_KEY_FILE` environment variable (not recommended for production)
+- **Alternative: Service Account Key File**
+  - Download a JSON key file from Google Cloud Console.
+  - Set the `BIGQUERY_KEY_FILE` environment variable pointing to the JSON file (not recommended for production).
 
-#### How Authentication Works
+#### Authentication Hierarchy
 
-The Google Client library follows this authentication hierarchy (in order of preference):
+The Google Client library authenticates in this order:
 
-1. **Key File Path in Config**: If `key_file` is specified in your database configuration
-2. **`GOOGLE_APPLICATION_CREDENTIALS` Environment Variable**: Points to a service account JSON file
-3. **Well-Known Path**: Automatically looks for credentials at:
-   - **Windows**: `%APPDATA%/gcloud/application_default_credentials.json`
-   - **Linux/macOS**: `$HOME/.config/gcloud/application_default_credentials.json`
-4. **Google App Engine Built-in Service Account**: If running on Google App Engine
-5. **Google Compute Engine Built-in Service Account**: If running on Google Compute Engine
-6. **Direct Authentication Array**: You can also provide credentials directly in the config:
+1. `key_file` specified in the database config.
+2. `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
+3. Default credential file locations.
+4. Google App Engine built-in service account.
+5. Google Compute Engine built-in service account.
+6. Direct credentials array in config.
+
+Example direct credentials array in `config/database.php`:
 
 ```php
 'bigquery' => [
@@ -84,40 +98,42 @@ The Google Client library follows this authentication hierarchy (in order of pre
 ],
 ```
 
-### 3. Set up your environment variables
+### 3. Environment Variables
 
-Add these to your `.env` file:
+Add the following to your `.env` file:
 
 ```env
 BIGQUERY_PROJECT_ID=your-project-id
 BIGQUERY_DATASET=your-dataset-name
-# Optional: Only if you need to use service account key file (not recommended)
+# Optional: Only if using service account key file (not recommended for production)
 # BIGQUERY_KEY_FILE=path/to/your/service-account-key.json
 ```
 
-### 4. Configure database connection
+### 4. Database Connection
 
-Add the BigQuery connection to your `config/database.php`:
+Add the BigQuery connection in `config/database.php`:
 
 ```php
 'connections' => [
-    // ... other connections
-    
+    // ... other connections ...
+
     'bigquery' => [
         'driver'     => 'bigquery',
         'project_id' => env('BIGQUERY_PROJECT_ID', ''),
         'dataset'    => env('BIGQUERY_DATASET', ''),
-        // Optional: Only if you need to use service account key file (not recommended)
+        // Optional: Only if using service account key file (not recommended)
         'key_file'   => env('BIGQUERY_KEY_FILE', ''),
     ],
 ],
 ```
 
+---
+
 ## Usage
 
-### Creating BigQuery Models
+### Models
 
-Create models that extend `BigQueryModel` to work with BigQuery tables:
+Create models by extending `BigQueryModel` to interact with BigQuery tables:
 
 ```php
 <?php
@@ -128,30 +144,46 @@ use NomanSheikh\LaravelBigqueryEloquent\Eloquent\BigQueryModel;
 
 class UserAnalytics extends BigQueryModel
 {
-    protected $table = 'user_analytics'; // Will be prefixed with project.dataset
-    
-    // Optional: Override the dataset for this specific model
-    protected ?string $dataset = 'analytics';
-    
-    // Define your fillable fields
-    protected $fillable = [
-        'user_id',
-        'page_views',
-        'session_duration',
-        'created_at'
-    ];
+    protected $table = 'user_analytics'; // Automatically prefixed with project.dataset
 }
 ```
 
-### Querying Data
+#### Overriding Dataset
 
-Use standard Eloquent methods to query your BigQuery tables:
+You can override the default dataset either by setting the `$dataset` property or dynamically:
 
 ```php
-// Basic queries
+<?php
+
+namespace App\Models;
+
+use NomanSheikh\LaravelBigqueryEloquent\Eloquent\BigQueryModel;
+
+class SalesData extends BigQueryModel
+{
+    protected $table = 'sales';
+
+    // Override dataset statically
+    protected ?string $dataset = 'analytics';
+
+    // Or override dynamically in constructor
+    public function __construct(array $attributes = [])
+    {
+        parent::__construct($attributes);
+        $this->setDataset('sales_data');
+    }
+}
+```
+
+### Queries
+
+Perform queries using familiar Eloquent methods:
+
+```php
+// Basic query
 $users = UserAnalytics::where('page_views', '>', 100)->get();
 
-// Complex queries
+// Complex query with ordering and limits
 $topUsers = UserAnalytics::select('user_id', 'page_views')
     ->where('created_at', '>=', now()->subDays(30))
     ->orderBy('page_views', 'desc')
@@ -166,60 +198,69 @@ $stats = UserAnalytics::selectRaw('
 ')->first();
 ```
 
-### Using Different Datasets
+### JSON Support
 
-You can specify different datasets for specific models:
+Query JSON fields using BigQuery's JSON functions:
 
 ```php
-class SalesData extends BigQueryModel
-{
-    protected $table = 'sales';
-    
-    public function __construct(array $attributes = [])
-    {
-        parent::__construct($attributes);
-        $this->setDataset('sales_data');
-    }
-}
+// Using whereRaw with JSON_EXTRACT_SCALAR
+$results = UserAnalytics::whereRaw("JSON_EXTRACT_SCALAR(json_column, '$.key') = ?", ['value'])->get();
+
+// Using selectRaw for JSON extraction
+$results = UserAnalytics::selectRaw("JSON_EXTRACT_SCALAR(json_column, '$.key') as key_value")->get();
 ```
 
 ### Raw Queries
 
-You can also run raw SQL queries directly:
+Execute raw SQL queries directly via the BigQuery connection:
 
 ```php
 use Illuminate\Support\Facades\DB;
 
-$results = DB::connection('bigquery')
-    ->select('SELECT user_id, COUNT(*) as visits FROM `project.dataset.user_analytics` WHERE created_at >= ?', [
-        now()->subDays(7)
-    ]);
+$results = DB::connection('bigquery')->select(
+    'SELECT user_id, COUNT(*) as visits FROM `project.dataset.user_analytics` WHERE created_at >= ?',
+    [now()->subDays(7)]
+);
 ```
 
-## Current Limitations
+---
 
-- **Read-Only**: Currently supports read operations only. Write operations (INSERT, UPDATE, DELETE) are not yet implemented.
-- **BigQuery Specific**: This package is specifically designed for BigQuery and may not work with other database systems.
+## Limitations
+
+- **Read-Only**: Supports only read operations (SELECT queries). Write operations (INSERT, UPDATE, DELETE) are not supported.
+- **BigQuery Specific**: Designed specifically for Google BigQuery and may not be compatible with other database drivers.
+
+---
 
 ## Testing
+
+Run the test suite with:
 
 ```bash
 composer test
 ```
 
+---
+
 ## Contributing
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
+Contributions are welcome! Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines.
 
-## Security Vulnerabilities
+---
 
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
+## Security
+
+If you discover any security vulnerabilities, please report them via [our security policy](../../security/policy).
+
+---
 
 ## Credits
 
 - [Noman Sheikh](https://github.com/nomansheikh)
 - [All Contributors](../../contributors)
 
+---
+
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+This package is open-source software licensed under the [MIT License](LICENSE.md).
