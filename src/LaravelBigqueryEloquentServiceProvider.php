@@ -2,7 +2,6 @@
 
 namespace NomanSheikh\LaravelBigqueryEloquent;
 
-use NomanSheikh\LaravelBigqueryEloquent\Commands\LaravelBigqueryEloquentCommand;
 use NomanSheikh\LaravelBigqueryEloquent\Database\BigQueryConnection;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;

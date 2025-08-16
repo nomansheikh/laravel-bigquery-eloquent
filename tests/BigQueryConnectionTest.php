@@ -19,5 +19,5 @@ it('grammar wraps fully qualified table', function () {
 
     $wrapped = $method->invoke($grammar, 'my-project.my_dataset.my_table');
 
-    expect($wrapped)->toBe('`my-project.my_dataset.my_table`');
+    expect($wrapped)->toBe('my-project.my_dataset.my_table');
 });

@@ -28,4 +28,9 @@ abstract class BigQueryModel extends Model
 
         return $this;
     }
+
+    public function newEloquentBuilder($query): BigQueryBuilder
+    {
+        return new BigQueryBuilder($query);
+    }
 }
