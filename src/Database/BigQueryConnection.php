@@ -62,10 +62,12 @@ class BigQueryConnection extends Connection
 
     public function select($query, $bindings = [], $useReadPdo = true): array
     {
-        $this->logQuery($query, $bindings);
+        $start = microtime(true);
 
         $job = $this->client->query($query)->parameters(array_values($bindings));
         $result = $this->client->runQuery($job);
+
+        $this->logQuery($query, $bindings, $this->getElapsedTime($start));
 
         $rows = [];
         foreach ($result as $row) {
