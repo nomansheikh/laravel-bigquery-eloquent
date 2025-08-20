@@ -32,19 +32,34 @@ class BigQueryGrammar extends MySqlGrammar
         return "`{$table}`";
     }
 
-    /**
-     * Wrap a fully-qualified BigQuery identifier
-     *
-     * Why:
-     * - BigQuery expects the entire string wrapped once in backticks.
-     *   Example: `my-project.my_dataset.my_table`
-     * - This prevents Laravel from splitting on "." incorrectly.
-     */
-    protected function wrapFullyQualified(string $name): string
+    protected function wrapValue($value): string
     {
-        $trim = trim($name, '`');
+        // Don't wrap the wildcard
+        if ($value === '*') {
+            return $value;
+        }
 
-        return '`'.$trim.'`';
+        // Do not backtick aliases or normal identifiers
+        // unless they contain special chars (like - or space)
+        if (preg_match('/[^A-Za-z0-9_]/', $value)) {
+            return "`{$value}`";
+        }
+
+        return $value;
+    }
+
+    public function wrap($value, $prefixAlias = false): float|int|string|Expression
+    {
+        if ($value instanceof Expression) {
+            return $this->getValue($value);
+        }
+
+        // Example: "alias.column" → leave as-is, don’t turn into `alias`.`column`
+        if (str_contains($value, '.')) {
+            return $value;
+        }
+
+        return $this->wrapValue($value);
     }
 
     /**

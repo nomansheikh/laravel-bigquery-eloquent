@@ -19,7 +19,7 @@ abstract class BigQueryModel extends Model
         $dataset = $this->dataset ?? config("database.connections.{$connName}.dataset");
         $project = config("database.connections.{$connName}.project_id");
 
-        return "{$project}.{$dataset}.{$table}";
+        return "`{$project}.{$dataset}.{$table}`";
     }
 
     public function setDataset(string $dataset): static
