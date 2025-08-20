@@ -48,7 +48,7 @@ class BigQueryGrammar extends MySqlGrammar
         return $value;
     }
 
-    public function wrap($value): float|int|string|Expression
+    public function wrap($value, $prefixAlias = false): float|int|string|Expression
     {
         if ($value instanceof Expression) {
             return $this->getValue($value);
