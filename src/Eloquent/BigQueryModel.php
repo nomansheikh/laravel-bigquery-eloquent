@@ -33,4 +33,14 @@ abstract class BigQueryModel extends Model
     {
         return new BigQueryBuilder($query);
     }
+
+    public static function create(array $attributes = []): static
+    {
+        $model = new static($attributes);
+        $model->fill($attributes);
+
+        $model->save();
+
+        return $model;
+    }
 }

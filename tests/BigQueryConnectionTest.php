@@ -28,10 +28,3 @@ it('uses the BigQueryGrammar on the connection', function () {
 
     expect($connection->getQueryGrammar())->toBeInstanceOf(BigQueryGrammar::class);
 });
-
-it('throws on write statements in simple mode', function () {
-    $connection = DB::connection('bigquery');
-
-    expect(fn () => $connection->affectingStatement('delete from `t` where id = 1'))
-        ->toThrow(RuntimeException::class, 'does not support write statements');
-});

@@ -12,4 +12,12 @@ class BigQueryBuilder extends Builder
 
         return $this;
     }
+
+    public function update(array $values): void
+    {
+        $sql = $this->getGrammar()->compileUpdate($this->getQuery(), $values);
+        $bindings = array_merge(array_values($values), $this->getQuery()->getBindings());
+
+        $this->query->getConnection()->statement($sql, $bindings);
+    }
 }
