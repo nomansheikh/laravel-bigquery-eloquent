@@ -20,3 +20,34 @@ it('wraps JSON selectors using JSON_VALUE for scalars', function () {
     $sqlColumn = $method->invoke($grammar, 'payload');
     expect($sqlColumn)->toBe('payload');
 });
+
+it('qualifies table alias correctly without over-wrapping', function () {
+    // Ensure we use the BigQuery connection builder
+    $sql = $this->app['db']->connection('bigquery')->query()
+        ->from('project.ds.jobs as t')
+        ->select('t.id')
+        ->toSql();
+
+    expect($sql)->toBe('select t.id from project.ds.jobs as t');
+});
+
+it('does not over-wrap dotted identifiers in wrap', function () {
+    $connection = $this->app['db']->connection('bigquery');
+    $grammar = $connection->getQueryGrammar();
+
+    $wrapped = $grammar->wrap('t.column');
+
+    expect($wrapped)->toBe('t.column');
+});
+
+it('wrapTable backticks simple table names', function () {
+    $connection = $this->app['db']->connection('bigquery');
+    $grammar = $connection->getQueryGrammar();
+
+    $ref = new ReflectionClass($grammar);
+    $method = $ref->getMethod('wrapTable');
+
+    $wrapped = $method->invoke($grammar, 'jobs');
+
+    expect($wrapped)->toBe('`jobs`');
+});

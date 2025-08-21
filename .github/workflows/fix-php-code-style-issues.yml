@@ -2,8 +2,11 @@ name: Fix PHP code style issues
 
 on:
   push:
-    paths:
-      - '**.php'
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write

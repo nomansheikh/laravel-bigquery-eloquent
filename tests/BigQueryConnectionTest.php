@@ -1,6 +1,7 @@
 <?php
 
 use NomanSheikh\LaravelBigqueryEloquent\Database\BigQueryConnection;
+use NomanSheikh\LaravelBigqueryEloquent\Database\Query\Grammars\BigQueryGrammar;
 
 it('registers the bigquery connection', function () {
     $connection = DB::connection('bigquery');
@@ -20,4 +21,10 @@ it('grammar wraps fully qualified table', function () {
     $wrapped = $method->invoke($grammar, 'my-project.my_dataset.my_table');
 
     expect($wrapped)->toBe('my-project.my_dataset.my_table');
+});
+
+it('uses the BigQueryGrammar on the connection', function () {
+    $connection = DB::connection('bigquery');
+
+    expect($connection->getQueryGrammar())->toBeInstanceOf(BigQueryGrammar::class);
 });
