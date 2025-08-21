@@ -7,7 +7,6 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Processors\Processor;
 use NomanSheikh\LaravelBigqueryEloquent\Database\Query\Grammars\BigQueryGrammar;
 use PDO;
-use RuntimeException;
 
 class BigQueryConnection extends Connection
 {
@@ -77,8 +76,16 @@ class BigQueryConnection extends Connection
         return $rows;
     }
 
-    public function affectingStatement($query, $bindings = [])
+    public function statement($query, $bindings = [])
     {
-        throw new RuntimeException('BigQuery driver (simple mode) does not support write statements yet.');
+        $start = microtime(true);
+
+        $job = $this->client->query($query)->parameters(array_values($bindings));
+        $result = $this->client->runQuery($job);
+
+        $this->logQuery($query, $bindings, $this->getElapsedTime($start));
+
+        // BigQuery may return affected rows
+        return $result->info()['numDmlAffectedRows'] ?? 0;
     }
 }
