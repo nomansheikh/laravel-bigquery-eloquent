@@ -36,7 +36,7 @@ abstract class BigQueryModel extends Model
 
     public static function create(array $attributes = []): static
     {
-        $model = new static($attributes);
+        $model = new static($attributes); // @phpstan-ignore-line
         $model->fill($attributes);
 
         $model->save();

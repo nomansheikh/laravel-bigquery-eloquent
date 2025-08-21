@@ -3,6 +3,7 @@
 namespace NomanSheikh\LaravelBigqueryEloquent\Database;
 
 use Google\Cloud\BigQuery\BigQueryClient;
+use Google\Cloud\BigQuery\QueryResults;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Processors\Processor;
 use NomanSheikh\LaravelBigqueryEloquent\Database\Query\Grammars\BigQueryGrammar;
@@ -11,6 +12,8 @@ use PDO;
 class BigQueryConnection extends Connection
 {
     protected BigQueryClient $client;
+
+    protected QueryResults $result;
 
     protected string $projectId;
 
@@ -31,7 +34,7 @@ class BigQueryConnection extends Connection
             throw new \RuntimeException('BigQuery does not use PDO.');
         };
 
-        parent::__construct($pdoResolver, '', '', $config);
+        parent::__construct(pdo: $pdoResolver, config: $config);
     }
 
     public function getClient(): BigQueryClient
@@ -68,6 +71,8 @@ class BigQueryConnection extends Connection
 
         $this->logQuery($query, $bindings, $this->getElapsedTime($start));
 
+        $this->result = $result;
+
         $rows = [];
         foreach ($result as $row) {
             $rows[] = (array) $row;
@@ -85,7 +90,14 @@ class BigQueryConnection extends Connection
 
         $this->logQuery($query, $bindings, $this->getElapsedTime($start));
 
+        $this->result = $result;
+
         // BigQuery may return affected rows
         return $result->info()['numDmlAffectedRows'] ?? 0;
+    }
+
+    public function getAffectedRows(): int
+    {
+        return $this->result->info()['numDmlAffectedRows'] ?? 0;
     }
 }

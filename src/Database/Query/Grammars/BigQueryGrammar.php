@@ -56,7 +56,7 @@ class BigQueryGrammar extends MySqlGrammar
         }
 
         // Handle JSON selectors like "column->path"
-        if (is_string($value) && str_contains($value, '->')) {
+        if ($value && str_contains($value, '->')) {
             return $this->wrapJsonSelector($value);
         }
 
