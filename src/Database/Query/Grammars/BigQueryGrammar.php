@@ -3,6 +3,7 @@
 namespace NomanSheikh\LaravelBigqueryEloquent\Database\Query\Grammars;
 
 use Illuminate\Contracts\Database\Query\Expression;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Grammars\MySqlGrammar;
 
 class BigQueryGrammar extends MySqlGrammar
@@ -54,12 +55,49 @@ class BigQueryGrammar extends MySqlGrammar
             return $this->getValue($value);
         }
 
+        // Handle JSON selectors like "column->path"
+        if (is_string($value) && str_contains($value, '->')) {
+            return $this->wrapJsonSelector($value);
+        }
+
         // Example: "alias.column" → leave as-is, don’t turn into `alias`.`column`
         if (str_contains($value, '.')) {
             return $value;
         }
 
         return $this->wrapValue($value);
+    }
+
+    protected function whereNull(Builder $query, $where): string
+    {
+        $column = $where['column'];
+
+        if (is_string($column) && str_contains($column, '->')) {
+            return $this->wrapJsonSelector($column).' is null';
+        }
+
+        return parent::whereNull($query, $where);
+    }
+
+    protected function whereNotNull(Builder $query, $where): string
+    {
+        $column = $where['column'];
+
+        if (is_string($column) && str_contains($column, '->')) {
+            return $this->wrapJsonSelector($column).' is not null';
+        }
+
+        return parent::whereNotNull($query, $where);
+    }
+
+    protected function whereJsonNull(Builder $query, $where): string
+    {
+        return $this->wrapJsonSelector($where['column']).' is null';
+    }
+
+    protected function whereJsonNotNull(Builder $query, $where): string
+    {
+        return $this->wrapJsonSelector($where['column']).' is not null';
     }
 
     /**
@@ -84,7 +122,10 @@ class BigQueryGrammar extends MySqlGrammar
             return $column; // no JSON path, just column
         }
 
-        $path = '$.'.str_replace('->', '.', $parts[1]);
+        $rawPath = str_replace('->', '.', $parts[1]);
+        // Escape single quotes in JSON path to avoid breaking the string literal
+        $escapedPath = str_replace("'", "\\'", $rawPath);
+        $path = '$.'.$escapedPath;
 
         return "JSON_VALUE({$column}, '{$path}')";
     }
