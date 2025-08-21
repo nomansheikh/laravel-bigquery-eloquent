@@ -227,7 +227,6 @@ $results = DB::connection('bigquery')->select(
 
 ## Limitations
 
-- **Read-Only**: Supports only read operations (SELECT queries). Write operations (INSERT, UPDATE, DELETE) are not supported.
 - **BigQuery Specific**: Designed specifically for Google BigQuery and may not be compatible with other database drivers.
 
 ---
