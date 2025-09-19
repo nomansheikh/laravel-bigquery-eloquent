@@ -5,3 +5,51 @@ parameters:
 			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 3
 			path: config/bigquery-eloquent.php
+
+		-
+			message: '#^Return type \(null\) of method NomanSheikh\\LaravelBigqueryEloquent\\BigQueryConnection\:\:getPdo\(\) should be compatible with return type \(PDO\) of method Illuminate\\Database\\Connection\:\:getPdo\(\)$#'
+			identifier: method.childReturnType
+			count: 1
+			path: src/BigQueryConnection.php
+
+		-
+			message: '#^Return type \(null\) of method NomanSheikh\\LaravelBigqueryEloquent\\BigQueryConnection\:\:getReadPdo\(\) should be compatible with return type \(PDO\) of method Illuminate\\Database\\Connection\:\:getReadPdo\(\)$#'
+			identifier: method.childReturnType
+			count: 1
+			path: src/BigQueryConnection.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Connection\:\:getDefaultDataset\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Eloquent/BigQueryModel.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Connection\:\:getProjectId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Eloquent/BigQueryModel.php
+
+		-
+			message: '#^Parameter \#1 \$connection of class NomanSheikh\\LaravelBigqueryEloquent\\Query\\BigQueryQueryBuilder constructor expects NomanSheikh\\LaravelBigqueryEloquent\\BigQueryConnection, Illuminate\\Database\\Connection given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Eloquent/BigQueryModel.php
+
+		-
+			message: '#^Method NomanSheikh\\LaravelBigqueryEloquent\\Query\\BigQueryQueryBuilder\:\:delete\(\) should return int but returns bool\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Query/BigQueryQueryBuilder.php
+
+		-
+			message: '#^Method NomanSheikh\\LaravelBigqueryEloquent\\Query\\BigQueryQueryBuilder\:\:get\(\) should return Illuminate\\Support\\Collection\<int, stdClass\> but returns Illuminate\\Support\\Collection\<\(int\|string\), array\<mixed, mixed\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Query/BigQueryQueryBuilder.php
+
+		-
+			message: '#^Return type \(bool\) of method NomanSheikh\\LaravelBigqueryEloquent\\Query\\BigQueryQueryBuilder\:\:update\(\) should be compatible with return type \(int\) of method Illuminate\\Database\\Query\\Builder\:\:update\(\)$#'
+			identifier: method.childReturnType
+			count: 1
+			path: src/Query/BigQueryQueryBuilder.php
