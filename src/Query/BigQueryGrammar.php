@@ -39,6 +39,10 @@ class BigQueryGrammar extends Grammar
 
     public function wrap($value)
     {
+        if ($value instanceof Expression) {
+            return $this->getValue($value);
+        }
+
         if ($value === '*' || str_contains($value, '.') || str_contains($value, '`')) {
             return $value;
         }
