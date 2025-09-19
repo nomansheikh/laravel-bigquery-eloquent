@@ -28,7 +28,7 @@ it('generates correct sql for BigQuery', function () {
     };
 
     $query = $model->where('salary', '>', 100000)
-        ->from($model->getTable(),  't')
+        ->from($model->getTable(), 't')
         ->select(['t.user_id', 't.salary', 't.job_title'])
         ->toSql();
 

@@ -19,6 +19,7 @@ class BigQueryGrammar extends Grammar
         if (str_contains($table, '.')) {
             if (preg_match('/\s+AS\s+/i', $table)) {
                 [$name, $alias] = preg_split('/\s+AS\s+/i', $table);
+
                 return "`$name` as $alias";
             }
 
