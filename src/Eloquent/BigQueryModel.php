@@ -4,43 +4,37 @@ namespace NomanSheikh\LaravelBigqueryEloquent\Eloquent;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryQueryBuilder;
 
 abstract class BigQueryModel extends Model
 {
     protected $connection = 'bigquery';
 
-    protected ?string $dataset = null;
-
     public function getTable(): string
     {
         $table = $this->table ?: Str::snake(Str::pluralStudly(class_basename(static::class)));
 
-        $connName = $this->getConnectionName() ?: $this->connection;
-        $dataset = $this->dataset ?? config("database.connections.{$connName}.dataset");
-        $project = config("database.connections.{$connName}.project_id");
+        if (Str::contains($table, '.')) {
+            return $table;
+        }
 
-        return "`{$project}.{$dataset}.{$table}`";
+        $project = $this->getConnection()->getProjectId();
+        $dataset = $this->getConnection()->getDefaultDataset();
+
+        return "$project.$dataset.$table";
     }
 
-    public function setDataset(string $dataset): static
+    public function newEloquentBuilder($query): BigQueryEloquentBuilder
     {
-        $this->dataset = $dataset;
-
-        return $this;
+        return new BigQueryEloquentBuilder($query);
     }
 
-    public function newEloquentBuilder($query): BigQueryBuilder
+    protected function newBaseQueryBuilder(): BigQueryQueryBuilder
     {
-        return new BigQueryBuilder($query);
-    }
-
-    public static function create(array $attributes = []): static
-    {
-        $model = new static($attributes); // @phpstan-ignore-line
-        $model->fill($attributes);
-
-        $model->save();
-
-        return $model;
+        return new BigQueryQueryBuilder(
+            $this->getConnection(),
+            $this->getConnection()->getQueryGrammar(),
+            $this->getConnection()->getPostProcessor()
+        );
     }
 }

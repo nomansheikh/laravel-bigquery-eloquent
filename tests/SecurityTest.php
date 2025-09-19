@@ -1,7 +1,7 @@
 <?php
 
-use NomanSheikh\LaravelBigqueryEloquent\Database\Query\Grammars\BigQueryGrammar;
 use NomanSheikh\LaravelBigqueryEloquent\Eloquent\BigQueryModel;
+use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryGrammar;
 
 it('parameterizes scalar values to avoid injection', function () {
     $model = new class extends BigQueryModel

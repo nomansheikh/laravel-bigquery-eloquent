@@ -1,7 +1,7 @@
 <?php
 
-use NomanSheikh\LaravelBigqueryEloquent\Database\BigQueryConnection;
-use NomanSheikh\LaravelBigqueryEloquent\Database\Query\Grammars\BigQueryGrammar;
+use NomanSheikh\LaravelBigqueryEloquent\BigQueryConnection;
+use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryGrammar;
 
 it('registers the bigquery connection', function () {
     $connection = DB::connection('bigquery');
