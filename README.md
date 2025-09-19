@@ -148,33 +148,6 @@ class UserAnalytics extends BigQueryModel
 }
 ```
 
-#### Overriding Dataset
-
-You can override the default dataset either by setting the `$dataset` property or dynamically:
-
-```php
-<?php
-
-namespace App\Models;
-
-use NomanSheikh\LaravelBigqueryEloquent\Eloquent\BigQueryModel;
-
-class SalesData extends BigQueryModel
-{
-    protected $table = 'sales';
-
-    // Override dataset statically
-    protected ?string $dataset = 'analytics';
-
-    // Or override dynamically in constructor
-    public function __construct(array $attributes = [])
-    {
-        parent::__construct($attributes);
-        $this->setDataset('sales_data');
-    }
-}
-```
-
 ### Queries
 
 Perform queries using familiar Eloquent methods:
@@ -196,18 +169,6 @@ $stats = UserAnalytics::selectRaw('
     AVG(page_views) as avg_page_views,
     SUM(session_duration) as total_duration
 ')->first();
-```
-
-### JSON Support
-
-Query JSON fields using BigQuery's JSON functions:
-
-```php
-// Using whereRaw with JSON_EXTRACT_SCALAR
-$results = UserAnalytics::whereRaw("JSON_EXTRACT_SCALAR(json_column, '$.key') = ?", ['value'])->get();
-
-// Using selectRaw for JSON extraction
-$results = UserAnalytics::selectRaw("JSON_EXTRACT_SCALAR(json_column, '$.key') as key_value")->get();
 ```
 
 ### Raw Queries
