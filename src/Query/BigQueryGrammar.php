@@ -17,6 +17,11 @@ class BigQueryGrammar extends Grammar
         }
 
         if (str_contains($table, '.')) {
+            if (preg_match('/\s+AS\s+/i', $table)) {
+                [$name, $alias] = preg_split('/\s+AS\s+/i', $table);
+                return "`$name` as $alias";
+            }
+
             return "`$table`";
         }
 
@@ -28,16 +33,8 @@ class BigQueryGrammar extends Grammar
 
     public function wrap($value)
     {
-        // Leave * as-is
-        if ($value === '*') {
+        if ($value === '*' || str_contains($value, '.') || str_contains($value, '`')) {
             return $value;
-        }
-
-        // Leave fully qualified tables alone
-        if (str_contains($value, '.') && ! in_array($value, ['created_at', 'updated_at'])) {
-            return collect(explode('.', $value))
-                ->map(fn ($v) => "`$v`")
-                ->implode('.');
         }
 
         // Wrap normal columns, including timestamps, without table prefix
