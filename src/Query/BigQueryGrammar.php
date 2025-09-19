@@ -2,6 +2,7 @@
 
 namespace NomanSheikh\LaravelBigqueryEloquent\Query;
 
+use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Query\Grammars\Grammar;
 use NomanSheikh\LaravelBigqueryEloquent\BigQueryConnection;
 
@@ -12,17 +13,21 @@ class BigQueryGrammar extends Grammar
 {
     public function wrapTable($table, $prefix = null): string
     {
+        if ($table instanceof Expression) {
+            return $this->getValue($table);
+        }
+
         if (str_starts_with($table, '`') && str_ends_with($table, '`')) {
             return $table;
         }
 
+        if (stripos($table, ' as ') !== false) {
+            [$name, $alias] = preg_split('/\s+as\s+/i', $table);
+
+            return "`$name` as $alias";
+        }
+
         if (str_contains($table, '.')) {
-            if (preg_match('/\s+AS\s+/i', $table)) {
-                [$name, $alias] = preg_split('/\s+AS\s+/i', $table);
-
-                return "`$name` as $alias";
-            }
-
             return "`$table`";
         }
 
