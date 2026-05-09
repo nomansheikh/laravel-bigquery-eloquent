@@ -134,6 +134,7 @@ function injectMockBigQueryClient(BigQueryConnection $connection, array $info): 
     $result = Mockery::mock(QueryResults::class);
     $result->shouldReceive('info')->andReturn($info);
     $result->shouldReceive('rows')->andReturn([]);
+    $result->shouldReceive('isComplete')->andReturnTrue();
 
     $client = Mockery::mock(BigQueryClient::class);
     $client->shouldReceive('query')->andReturn($config);
@@ -169,3 +170,36 @@ it('update returns 0 when DML stats are not in result info', function () {
 
     expect($affected)->toBe(0);
 });
+
+it('insert returns true on success', function () {
+    $connection = DB::connection('bigquery');
+    injectMockBigQueryClient($connection, []);
+
+    $ok = $connection->table('test-project.default_dataset.users')->insert(['name' => 'foo']);
+
+    expect($ok)->toBeTrue();
+});
+
+it('insert handles batch rows', function () {
+    $connection = DB::connection('bigquery');
+    injectMockBigQueryClient($connection, []);
+
+    $ok = $connection->table('test-project.default_dataset.users')->insert([
+        ['name' => 'a'],
+        ['name' => 'b'],
+    ]);
+
+    expect($ok)->toBeTrue();
+});
+
+it('insert returns true on empty values without hitting the client', function () {
+    $connection = DB::connection('bigquery');
+
+    expect($connection->table('test-project.default_dataset.users')->insert([]))->toBeTrue();
+});
+
+it('insertGetId throws because BigQuery has no auto-increment', function () {
+    DB::connection('bigquery')
+        ->table('test-project.default_dataset.users')
+        ->insertGetId(['name' => 'foo']);
+})->throws(LogicException::class, 'BigQuery does not support auto-incrementing keys');
