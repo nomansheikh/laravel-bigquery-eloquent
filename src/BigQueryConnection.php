@@ -145,4 +145,28 @@ class BigQueryConnection extends Connection
     {
         throw new LogicException('BigQuery does not support transactions.');
     }
+
+    #[Override]
+    public function select($query, $bindings = [], $useReadPdo = true): array
+    {
+        $start = microtime(true);
+
+        $job = $this->client->query($query);
+
+        if (! empty($bindings)) {
+            $job = $job->parameters($bindings);
+        }
+
+        $result = $this->client->runQuery($job);
+
+        $this->logQuery($query, $bindings, $this->getElapsedTime($start));
+
+        $rows = [];
+
+        foreach ($result as $row) {
+            $rows[] = (object) ((array) $row);
+        }
+
+        return $rows;
+    }
 }
