@@ -38,14 +38,14 @@ class BigQueryQueryBuilder extends Builder
         return collect($result->rows())->map(fn ($row) => (array) $row);
     }
 
-    public function update(array $values): bool
+    public function update(array $values): int
     {
         $sql = $this->grammar->compileUpdate($this, $values);
         $bindings = array_merge(array_values($values), $this->getBindings());
 
         $result = $this->runQuery($sql, $bindings);
 
-        return $result->isComplete();
+        return (int) ($result->info()['numDmlAffectedRows'] ?? 0);
     }
 
     public function delete($id = null): int
@@ -55,7 +55,7 @@ class BigQueryQueryBuilder extends Builder
 
         $result = $this->runQuery($sql, $bindings);
 
-        return $result->isComplete();
+        return (int) ($result->info()['numDmlAffectedRows'] ?? 0);
     }
 
     private function getElapsedTime($start): float

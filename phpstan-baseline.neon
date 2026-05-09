@@ -25,19 +25,7 @@ parameters:
 			path: src/Eloquent/BigQueryModel.php
 
 		-
-			message: '#^Method NomanSheikh\\LaravelBigqueryEloquent\\Query\\BigQueryQueryBuilder\:\:delete\(\) should return int but returns bool\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Query/BigQueryQueryBuilder.php
-
-		-
 			message: '#^Method NomanSheikh\\LaravelBigqueryEloquent\\Query\\BigQueryQueryBuilder\:\:get\(\) should return Illuminate\\Support\\Collection\<int, stdClass\> but returns Illuminate\\Support\\Collection\<\(int\|string\), array\<mixed, mixed\>\>\.$#'
 			identifier: return.type
-			count: 1
-			path: src/Query/BigQueryQueryBuilder.php
-
-		-
-			message: '#^Return type \(bool\) of method NomanSheikh\\LaravelBigqueryEloquent\\Query\\BigQueryQueryBuilder\:\:update\(\) should be compatible with return type \(int\) of method Illuminate\\Database\\Query\\Builder\:\:update\(\)$#'
-			identifier: method.childReturnType
 			count: 1
 			path: src/Query/BigQueryQueryBuilder.php

@@ -1,5 +1,8 @@
 <?php
 
+use Google\Cloud\BigQuery\BigQueryClient;
+use Google\Cloud\BigQuery\QueryJobConfiguration;
+use Google\Cloud\BigQuery\QueryResults;
 use Google\Cloud\BigQuery\Timestamp;
 use NomanSheikh\LaravelBigqueryEloquent\BigQueryConnection;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryGrammar;
@@ -121,4 +124,48 @@ it('returns an empty array when normalizing empty bindings', function () {
     $connection = DB::connection('bigquery');
 
     expect($connection->normalizeBindings([]))->toBe([]);
+});
+
+function injectMockBigQueryClient(BigQueryConnection $connection, array $info): void
+{
+    $config = Mockery::mock(QueryJobConfiguration::class);
+    $config->shouldReceive('parameters')->andReturnSelf();
+
+    $result = Mockery::mock(QueryResults::class);
+    $result->shouldReceive('info')->andReturn($info);
+    $result->shouldReceive('rows')->andReturn([]);
+
+    $client = Mockery::mock(BigQueryClient::class);
+    $client->shouldReceive('query')->andReturn($config);
+    $client->shouldReceive('runQuery')->andReturn($result);
+
+    $reflection = new ReflectionProperty($connection, 'client');
+    $reflection->setValue($connection, $client);
+}
+
+it('update returns numDmlAffectedRows as int', function () {
+    $connection = DB::connection('bigquery');
+    injectMockBigQueryClient($connection, ['numDmlAffectedRows' => '7']);
+
+    $affected = $connection->table('test-project.default_dataset.users')->where('id', 1)->update(['name' => 'foo']);
+
+    expect($affected)->toBe(7);
+});
+
+it('delete returns numDmlAffectedRows as int', function () {
+    $connection = DB::connection('bigquery');
+    injectMockBigQueryClient($connection, ['numDmlAffectedRows' => '3']);
+
+    $affected = $connection->table('test-project.default_dataset.users')->where('id', 1)->delete();
+
+    expect($affected)->toBe(3);
+});
+
+it('update returns 0 when DML stats are not in result info', function () {
+    $connection = DB::connection('bigquery');
+    injectMockBigQueryClient($connection, []);
+
+    $affected = $connection->table('test-project.default_dataset.users')->where('id', 1)->update(['name' => 'foo']);
+
+    expect($affected)->toBe(0);
 });
