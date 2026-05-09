@@ -6,6 +6,7 @@ use Google\Cloud\BigQuery\BigQueryClient;
 use Google\Cloud\BigQuery\QueryResults;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Processors\Processor;
+use LogicException;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryGrammar;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryProcessor;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryQueryBuilder;
@@ -102,13 +103,13 @@ class BigQueryConnection extends Connection
         return 'BigQuery';
     }
 
-    public function getPdo(): null
+    public function getPdo(): never
     {
-        return null;
+        throw new LogicException('BigQuery does not use PDO. Use getClient() to access the BigQuery client.');
     }
 
-    public function getReadPdo(): null
+    public function getReadPdo(): never
     {
-        return null;
+        throw new LogicException('BigQuery does not use PDO. Use getClient() to access the BigQuery client.');
     }
 }
