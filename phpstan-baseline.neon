@@ -7,18 +7,6 @@ parameters:
 			path: config/bigquery-eloquent.php
 
 		-
-			message: '#^Return type \(null\) of method NomanSheikh\\LaravelBigqueryEloquent\\BigQueryConnection\:\:getPdo\(\) should be compatible with return type \(PDO\) of method Illuminate\\Database\\Connection\:\:getPdo\(\)$#'
-			identifier: method.childReturnType
-			count: 1
-			path: src/BigQueryConnection.php
-
-		-
-			message: '#^Return type \(null\) of method NomanSheikh\\LaravelBigqueryEloquent\\BigQueryConnection\:\:getReadPdo\(\) should be compatible with return type \(PDO\) of method Illuminate\\Database\\Connection\:\:getReadPdo\(\)$#'
-			identifier: method.childReturnType
-			count: 1
-			path: src/BigQueryConnection.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Connection\:\:getDefaultDataset\(\)\.$#'
 			identifier: method.notFound
 			count: 1
