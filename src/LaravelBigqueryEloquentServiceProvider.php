@@ -20,22 +20,26 @@ class LaravelBigqueryEloquentServiceProvider extends PackageServiceProvider
             ->hasConfigFile('bigquery-eloquent');
     }
 
+    public function packageRegistered(): void
+    {
+        $this->app->resolving('db', function ($db) {
+            $db->extend('bigquery', function (array $config, string $name) {
+                $config = array_merge([
+                    'project_id' => config('bigquery-eloquent.project_id'),
+                    'key_file' => config('bigquery-eloquent.key_file'),
+                    'dataset' => config('bigquery-eloquent.dataset'),
+                    'name' => $name,
+                ], $config);
+
+                return new BigQueryConnection($config);
+            });
+        });
+    }
+
     public function packageBooted(): void
     {
         parent::packageBooted();
 
-        $db = $this->app['db'];
-        Model::setConnectionResolver($db);
-
-        $db->extend('bigquery', function (array $config, string $name) {
-            $config = array_merge([
-                'project_id' => config('bigquery-eloquent.project_id'),
-                'key_file' => config('bigquery-eloquent.key_file'),
-                'dataset' => config('bigquery-eloquent.dataset'),
-                'name' => $name,
-            ], $config);
-
-            return new BigQueryConnection($config);
-        });
+        Model::setConnectionResolver($this->app['db']);
     }
 }
