@@ -31,10 +31,18 @@ class BigQueryConnection extends Connection
         $this->projectId = (string) ($config['project_id'] ?? '');
         $this->dataset = (string) ($config['dataset'] ?? '');
 
-        $this->client = new BigQueryClient([
-            'projectId' => $this->projectId,
-            'keyFilePath' => (string) ($config['key_file'] ?? ''),
-        ]);
+        $clientConfig = ['projectId' => $this->projectId];
+        $keyFile = $config['key_file'] ?? null;
+
+        if (is_array($keyFile)) {
+            $clientConfig['keyFile'] = $keyFile;
+        }
+
+        if (is_string($keyFile) && $keyFile !== '') {
+            $clientConfig['keyFilePath'] = $keyFile;
+        }
+
+        $this->client = new BigQueryClient($clientConfig);
 
         $this->database = $this->dataset;
 
