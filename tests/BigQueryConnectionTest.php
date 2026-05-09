@@ -30,6 +30,12 @@ it('uses the BigQueryGrammar on the connection', function () {
     expect($connection->getQueryGrammar())->toBeInstanceOf(BigQueryGrammar::class);
 });
 
+it('uses microsecond precision for the grammar date format', function () {
+    $grammar = DB::connection('bigquery')->getQueryGrammar();
+
+    expect($grammar->getDateFormat())->toBe('Y-m-d H:i:s.u');
+});
+
 it('throws when getPdo is called', function () {
     DB::connection('bigquery')->getPdo();
 })->throws(LogicException::class, 'BigQuery does not use PDO');
