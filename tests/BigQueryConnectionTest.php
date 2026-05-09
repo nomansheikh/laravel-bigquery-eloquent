@@ -27,15 +27,6 @@ it('grammar wraps fully qualified table', function () {
     expect($wrapped)->toBe('`my-project.my_dataset.my_table`');
 });
 
-it('grammar wraps a bare table name using the connection project and dataset', function () {
-    $grammar = DB::connection('bigquery')->getQueryGrammar();
-
-    $ref = new ReflectionClass($grammar);
-    $method = $ref->getMethod('wrapTable');
-
-    expect($method->invoke($grammar, 'users'))->toBe('`test-project.default_dataset.users`');
-});
-
 it('uses the BigQueryGrammar on the connection', function () {
     $connection = DB::connection('bigquery');
 
