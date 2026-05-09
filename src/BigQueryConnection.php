@@ -2,6 +2,7 @@
 
 namespace NomanSheikh\LaravelBigqueryEloquent;
 
+use Closure;
 use Google\Cloud\BigQuery\BigQueryClient;
 use Google\Cloud\BigQuery\QueryResults;
 use Illuminate\Database\Connection;
@@ -111,5 +112,29 @@ class BigQueryConnection extends Connection
     public function getReadPdo(): never
     {
         throw new LogicException('BigQuery does not use PDO. Use getClient() to access the BigQuery client.');
+    }
+
+    #[Override]
+    public function transaction(Closure $callback, $attempts = 1): never
+    {
+        throw new LogicException('BigQuery does not support transactions.');
+    }
+
+    #[Override]
+    public function beginTransaction(): never
+    {
+        throw new LogicException('BigQuery does not support transactions.');
+    }
+
+    #[Override]
+    public function commit(): never
+    {
+        throw new LogicException('BigQuery does not support transactions.');
+    }
+
+    #[Override]
+    public function rollBack($toLevel = null): never
+    {
+        throw new LogicException('BigQuery does not support transactions.');
     }
 }
