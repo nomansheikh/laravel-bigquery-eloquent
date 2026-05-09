@@ -70,6 +70,10 @@ composer analyse       # phpstan
 composer format        # pint
 ```
 
+## Workflow rules
+
+- **Always run `composer test` before `git add`.** Never stage changes that haven't been verified locally. If tests fail, fix the cause before staging.
+
 ## Repo conventions
 
 - **Commits**: conventional commits style (`feat:`, `fix:`, `refactor:`). Use the `/commit` skill.
