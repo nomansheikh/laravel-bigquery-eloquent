@@ -1,5 +1,6 @@
 <?php
 
+use Google\Cloud\BigQuery\Timestamp;
 use NomanSheikh\LaravelBigqueryEloquent\BigQueryConnection;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryGrammar;
 
@@ -93,4 +94,25 @@ it('accepts a string key_file path without throwing', function () {
     ]);
 
     expect(fn () => DB::connection('bigquery_string_key'))->not->toThrow(Throwable::class);
+});
+
+it('normalizes DateTimeInterface bindings to BigQuery Timestamp', function () {
+    $connection = DB::connection('bigquery');
+    $datetime = new DateTime('2025-01-15 10:00:00');
+    $immutable = new DateTimeImmutable('2025-06-20 12:30:45');
+
+    $normalized = $connection->normalizeBindings([$datetime, 'a string', 42, null, true, $immutable]);
+
+    expect($normalized[0])->toBeInstanceOf(Timestamp::class)
+        ->and($normalized[1])->toBe('a string')
+        ->and($normalized[2])->toBe(42)
+        ->and($normalized[3])->toBeNull()
+        ->and($normalized[4])->toBeTrue()
+        ->and($normalized[5])->toBeInstanceOf(Timestamp::class);
+});
+
+it('returns an empty array when normalizing empty bindings', function () {
+    $connection = DB::connection('bigquery');
+
+    expect($connection->normalizeBindings([]))->toBe([]);
 });
