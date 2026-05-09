@@ -8,7 +8,9 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Grammars\Grammar;
 use Illuminate\Database\Query\Processors\Processor;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use LogicException;
 use NomanSheikh\LaravelBigqueryEloquent\BigQueryConnection;
 
 /**
@@ -36,6 +38,34 @@ class BigQueryQueryBuilder extends Builder
         $result = $this->runQuery($sql, $bindings);
 
         return collect($result->rows())->map(fn ($row) => (array) $row);
+    }
+
+    public function insert(array $values): bool
+    {
+        if (empty($values)) {
+            return true;
+        }
+
+        if (! is_array(Arr::first($values))) {
+            $values = [$values];
+        } else {
+            foreach ($values as $key => $value) {
+                ksort($value);
+                $values[$key] = $value;
+            }
+        }
+
+        $sql = $this->grammar->compileInsert($this, $values);
+        $bindings = $this->cleanBindings(Arr::flatten($values, 1));
+
+        $result = $this->runQuery($sql, $bindings);
+
+        return $result->isComplete();
+    }
+
+    public function insertGetId(array $values, $sequence = null): never
+    {
+        throw new LogicException('BigQuery does not support auto-incrementing keys. Set $incrementing = false on your model and assign a key (e.g., ULID/UUID) before saving.');
     }
 
     public function update(array $values): int
