@@ -19,7 +19,8 @@
 - **Dedicated BigQuery Driver**: Optimized database driver for BigQuery.
 - **Automatic Fully Qualified Table Names**: Handles `project.dataset.table` formatting transparently.
 - **Custom Query Grammar**: Generates SQL optimized for BigQuery syntax.
-- **Read-Only Support**: Supports SELECT queries (read operations only).
+- **Full DML Support**: `select`, `insert`, `update`, and `delete` via Eloquent or the raw query builder, executed as BigQuery DML.
+- **Bindings That Just Work**: `Carbon` / `DateTimeInterface` values are auto-wrapped as BigQuery `Timestamp` and microseconds are preserved.
 - **Flexible Authentication**: Supports Application Default Credentials (ADC) and service account key files.
 - **Environment Configuration**: Easy setup via environment variables.
 
@@ -133,24 +134,31 @@ Add the BigQuery connection in `config/database.php`:
 
 ### Models
 
-Create models by extending `BigQueryModel` to interact with BigQuery tables:
+Extend `BigQueryModel` to interact with BigQuery tables. Because BigQuery has no auto-incrementing primary keys, models must set `$incrementing = false` and assign their own keys (typically a ULID or UUID):
 
 ```php
 <?php
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use NomanSheikh\LaravelBigqueryEloquent\Eloquent\BigQueryModel;
 
 class UserAnalytics extends BigQueryModel
 {
+    use HasUlids;
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     protected $table = 'user_analytics'; // Automatically prefixed with project.dataset
+
+    protected $fillable = ['user_id', 'page_views', 'session_duration'];
 }
 ```
 
-### Queries
-
-Perform queries using familiar Eloquent methods:
+### Reading
 
 ```php
 // Basic query
@@ -171,9 +179,36 @@ $stats = UserAnalytics::selectRaw('
 ')->first();
 ```
 
+### Writing
+
+`insert`, `update`, and `delete` are executed as BigQuery DML statements. Be aware of [BigQuery's DML quotas](https://cloud.google.com/bigquery/quotas#dml) — DML is intended for batch and analytical workloads, not high-frequency OLTP writes.
+
+```php
+// Insert via Eloquent
+$row = UserAnalytics::create([
+    'user_id'          => 'usr_42',
+    'page_views'       => 17,
+    'session_duration' => 312,
+]);
+
+// Update
+UserAnalytics::where('user_id', 'usr_42')->update(['page_views' => 18]);
+
+// Delete
+UserAnalytics::where('user_id', 'usr_42')->delete();
+
+// Batch insert via the query builder
+DB::connection('bigquery')->table('project.dataset.user_analytics')->insert([
+    ['user_id' => 'usr_1', 'page_views' => 5],
+    ['user_id' => 'usr_2', 'page_views' => 9],
+]);
+```
+
+`Carbon` / `DateTimeInterface` values in bindings are automatically wrapped as BigQuery `Timestamp`, and the package preserves microsecond precision when serializing dates.
+
 ### Raw Queries
 
-Execute raw SQL queries directly via the BigQuery connection:
+Execute raw SQL directly via the BigQuery connection:
 
 ```php
 use Illuminate\Support\Facades\DB;
@@ -188,7 +223,13 @@ $results = DB::connection('bigquery')->select(
 
 ## Limitations
 
-- **BigQuery Specific**: Designed specifically for Google BigQuery and may not be compatible with other database drivers.
+These are inherent BigQuery characteristics, not bugs in the package:
+
+- **No transactions.** `DB::transaction()`, `beginTransaction()`, `commit()`, and `rollBack()` throw `LogicException`. BigQuery supports session-scoped transactions but they are not wired up here.
+- **No auto-incrementing primary keys.** Models must set `$incrementing = false` and assign their own key (ULID/UUID). `insertGetId()` throws `LogicException` to make this explicit.
+- **DML, not streaming.** Inserts, updates, and deletes execute as DML statements and are subject to [BigQuery's DML quotas](https://cloud.google.com/bigquery/quotas#dml). For high-volume ingestion, use a batch load job or the streaming insert API directly via the underlying `BigQueryClient` (`DB::connection('bigquery')->getClient()`).
+- **No PDO.** `getPdo()` / `getReadPdo()` throw `LogicException`. Code or third-party packages that introspect the underlying PDO will not work.
+- **BigQuery-specific driver.** Not interchangeable with other Laravel database drivers.
 
 ---
 
