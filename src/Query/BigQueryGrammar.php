@@ -50,4 +50,9 @@ class BigQueryGrammar extends Grammar
         // Wrap normal columns, including timestamps, without table prefix
         return "`$value`";
     }
+
+    public function getDateFormat(): string
+    {
+        return 'Y-m-d H:i:s.u';
+    }
 }

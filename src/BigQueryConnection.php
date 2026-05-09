@@ -3,6 +3,7 @@
 namespace NomanSheikh\LaravelBigqueryEloquent;
 
 use Closure;
+use DateTimeInterface;
 use Google\Cloud\BigQuery\BigQueryClient;
 use Google\Cloud\BigQuery\QueryResults;
 use Illuminate\Database\Connection;
@@ -154,7 +155,7 @@ class BigQueryConnection extends Connection
         $job = $this->client->query($query);
 
         if (! empty($bindings)) {
-            $job = $job->parameters($bindings);
+            $job = $job->parameters($this->normalizeBindings($bindings));
         }
 
         $result = $this->client->runQuery($job);
@@ -168,5 +169,16 @@ class BigQueryConnection extends Connection
         }
 
         return $rows;
+    }
+
+    public function normalizeBindings(array $bindings): array
+    {
+        return array_map(function ($value) {
+            if ($value instanceof DateTimeInterface) {
+                return $this->client->timestamp($value);
+            }
+
+            return $value;
+        }, $bindings);
     }
 }

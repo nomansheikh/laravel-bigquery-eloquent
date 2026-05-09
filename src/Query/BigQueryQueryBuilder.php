@@ -67,7 +67,7 @@ class BigQueryQueryBuilder extends Builder
     {
         $start = microtime(true);
 
-        $job = $this->client->query($sql)->parameters($bindings);
+        $job = $this->client->query($sql)->parameters($this->connection->normalizeBindings($bindings));
 
         $result = $this->client->runQuery($job);
 
