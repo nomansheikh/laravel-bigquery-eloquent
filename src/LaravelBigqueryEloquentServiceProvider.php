@@ -28,11 +28,10 @@ class LaravelBigqueryEloquentServiceProvider extends PackageServiceProvider
         Model::setConnectionResolver($db);
 
         $db->extend('bigquery', function (array $config, string $name) {
-            // Merge config/bigquery.php defaults
             $config = array_merge([
-                'project_id' => config('bigquery.project_id'),
-                'key_file' => config('bigquery.key_file'),
-                'dataset' => config('bigquery.dataset'),
+                'project_id' => config('bigquery-eloquent.project_id'),
+                'key_file' => config('bigquery-eloquent.key_file'),
+                'dataset' => config('bigquery-eloquent.dataset'),
                 'name' => $name,
             ], $config);
 
