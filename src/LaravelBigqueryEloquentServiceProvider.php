@@ -2,19 +2,27 @@
 
 namespace NomanSheikh\LaravelBigqueryEloquent;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\DatabaseManager;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class LaravelBigqueryEloquentServiceProvider extends PackageServiceProvider
 {
+    /**
+     * @var array<int, string>
+     */
+    protected array $connectionConfigKeys = [
+        'project_id',
+        'key_file',
+        'dataset',
+        'location',
+        'maximum_bytes_billed',
+        'job_timeout_ms',
+        'labels',
+    ];
+
     public function configurePackage(Package $package): void
     {
-        /*
-         * This class is a Package Service Provider
-         *
-         * More info: https://github.com/spatie/laravel-package-tools
-         */
         $package
             ->name('laravel-bigquery-eloquent')
             ->hasConfigFile('bigquery-eloquent');
@@ -22,24 +30,28 @@ class LaravelBigqueryEloquentServiceProvider extends PackageServiceProvider
 
     public function packageRegistered(): void
     {
-        $this->app->resolving('db', function ($db) {
+        $this->app->resolving('db', function (DatabaseManager $db) {
             $db->extend('bigquery', function (array $config, string $name) {
-                $config = array_merge([
-                    'project_id' => config('bigquery-eloquent.project_id'),
-                    'key_file' => config('bigquery-eloquent.key_file'),
-                    'dataset' => config('bigquery-eloquent.dataset'),
-                    'name' => $name,
-                ], $config);
-
-                return new BigQueryConnection($config);
+                return new BigQueryConnection($this->mergePackageDefaults($config, $name));
             });
         });
     }
 
-    public function packageBooted(): void
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function mergePackageDefaults(array $config, string $name): array
     {
-        parent::packageBooted();
+        $defaults = ['name' => $name];
 
-        Model::setConnectionResolver($this->app['db']);
+        foreach ($this->connectionConfigKeys as $key) {
+            $defaults[$key] = config("bigquery-eloquent.{$key}");
+        }
+
+        return array_merge($defaults, array_filter(
+            $config,
+            fn (mixed $value): bool => $value !== null
+        ));
     }
 }

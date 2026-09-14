@@ -4,7 +4,9 @@ namespace NomanSheikh\LaravelBigqueryEloquent;
 
 use Closure;
 use DateTimeInterface;
+use Generator;
 use Google\Cloud\BigQuery\BigQueryClient;
+use Google\Cloud\BigQuery\QueryJobConfiguration;
 use Google\Cloud\BigQuery\QueryResults;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Processors\Processor;
@@ -12,6 +14,7 @@ use LogicException;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryGrammar;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryProcessor;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryQueryBuilder;
+use NomanSheikh\LaravelBigqueryEloquent\Query\ResultMapper;
 use NomanSheikh\LaravelBigqueryEloquent\Schema\BigQuerySchemaBuilder;
 use NomanSheikh\LaravelBigqueryEloquent\Schema\BigQuerySchemaGrammar;
 use Override;
@@ -20,19 +23,40 @@ class BigQueryConnection extends Connection
 {
     protected BigQueryClient $client;
 
-    protected QueryResults $result;
-
     protected string $projectId;
 
     protected string $dataset;
 
+    protected ResultMapper $resultMapper;
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
     public function __construct(array $config)
     {
         $this->config = $config;
         $this->projectId = (string) ($config['project_id'] ?? '');
         $this->dataset = (string) ($config['dataset'] ?? '');
 
+        $this->client = new BigQueryClient($this->buildClientConfig($config));
+
+        $this->database = $this->dataset;
+
+        $this->useDefaultQueryGrammar();
+        $this->useDefaultPostProcessor();
+        $this->useDefaultSchemaGrammar();
+
+        $this->resultMapper = new ResultMapper($this->getQueryGrammar()->getDateFormat());
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function buildClientConfig(array $config): array
+    {
         $clientConfig = ['projectId' => $this->projectId];
+
         $keyFile = $config['key_file'] ?? null;
 
         if (is_array($keyFile)) {
@@ -43,12 +67,11 @@ class BigQueryConnection extends Connection
             $clientConfig['keyFilePath'] = $keyFile;
         }
 
-        $this->client = new BigQueryClient($clientConfig);
+        if (! empty($config['location'])) {
+            $clientConfig['location'] = $config['location'];
+        }
 
-        $this->database = $this->dataset;
-
-        $this->useDefaultQueryGrammar();
-        $this->useDefaultPostProcessor();
+        return $clientConfig;
     }
 
     public function getDefaultDataset(): string
@@ -72,11 +95,15 @@ class BigQueryConnection extends Connection
     }
 
     #[Override]
+    public function query(): BigQueryQueryBuilder
+    {
+        return new BigQueryQueryBuilder($this, $this->getQueryGrammar(), $this->getPostProcessor());
+    }
+
+    #[Override]
     public function table($table, $as = null): BigQueryQueryBuilder
     {
-        $query = new BigQueryQueryBuilder($this, $this->getQueryGrammar(), $this->getPostProcessor());
-
-        return $query->from($table);
+        return $this->query()->from($table, $as);
     }
 
     #[Override]
@@ -123,6 +150,12 @@ class BigQueryConnection extends Connection
         throw new LogicException('BigQuery does not use PDO. Use getClient() to access the BigQuery client.');
     }
 
+    /**
+     * BigQuery jobs are stateless HTTP calls, so there is never a connection to restore.
+     */
+    #[Override]
+    public function reconnectIfMissingConnection(): void {}
+
     #[Override]
     public function transaction(Closure $callback, $attempts = 1): never
     {
@@ -147,38 +180,224 @@ class BigQueryConnection extends Connection
         throw new LogicException('BigQuery does not support transactions.');
     }
 
+    /**
+     * @param  array<int, mixed>  $bindings
+     * @return array<int, object>
+     */
     #[Override]
     public function select($query, $bindings = [], $useReadPdo = true): array
     {
-        $start = microtime(true);
+        return $this->run($query, $bindings, function (string $query, array $bindings): array {
+            if ($this->pretending()) {
+                return [];
+            }
 
-        $job = $this->client->query($query);
+            $rows = [];
 
-        if (! empty($bindings)) {
-            $job = $job->parameters($this->normalizeBindings($bindings));
-        }
+            foreach ($this->runJob($query, $bindings)->rows() as $row) {
+                $rows[] = (object) $this->resultMapper->mapRow((array) $row);
+            }
 
-        $result = $this->client->runQuery($job);
-
-        $this->logQuery($query, $bindings, $this->getElapsedTime($start));
-
-        $rows = [];
-
-        foreach ($result as $row) {
-            $rows[] = (object) ((array) $row);
-        }
-
-        return $rows;
+            return $rows;
+        });
     }
 
+    /**
+     * @param  array<int, mixed>  $bindings
+     * @return Generator<int, object>
+     */
+    #[Override]
+    public function cursor($query, $bindings = [], $useReadPdo = true): Generator
+    {
+        $results = $this->run($query, $bindings, function (string $query, array $bindings): ?QueryResults {
+            if ($this->pretending()) {
+                return null;
+            }
+
+            return $this->runJob($query, $bindings);
+        });
+
+        if ($results === null) {
+            return;
+        }
+
+        foreach ($results->rows() as $row) {
+            yield (object) $this->resultMapper->mapRow((array) $row);
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $bindings
+     */
+    #[Override]
+    public function statement($query, $bindings = []): bool
+    {
+        return $this->run($query, $bindings, function (string $query, array $bindings): bool {
+            if ($this->pretending()) {
+                return true;
+            }
+
+            $results = $this->runJob($query, $bindings);
+
+            $this->recordsHaveBeenModified();
+
+            return $results->isComplete();
+        });
+    }
+
+    /**
+     * @param  array<int, mixed>  $bindings
+     */
+    #[Override]
+    public function affectingStatement($query, $bindings = []): int
+    {
+        return $this->run($query, $bindings, function (string $query, array $bindings): int {
+            if ($this->pretending()) {
+                return 0;
+            }
+
+            $affected = (int) ($this->runJob($query, $bindings)->info()['numDmlAffectedRows'] ?? 0);
+
+            $this->recordsHaveBeenModified($affected > 0);
+
+            return $affected;
+        });
+    }
+
+    #[Override]
+    public function unprepared($query): bool
+    {
+        return $this->statement($query);
+    }
+
+    /**
+     * @param  array<int, mixed>  $bindings
+     */
+    protected function runJob(string $query, array $bindings): QueryResults
+    {
+        [$query, $bindings] = $this->inlineNullBindings($query, $this->prepareBindings($bindings));
+
+        return $this->client->runQuery($this->newQueryJob($query, $bindings));
+    }
+
+    /**
+     * @param  array<int, mixed>  $bindings
+     */
+    protected function newQueryJob(string $query, array $bindings): QueryJobConfiguration
+    {
+        $job = $this->client->query($query);
+
+        if ($bindings !== []) {
+            $job->parameters($bindings);
+        }
+
+        if (isset($this->config['maximum_bytes_billed'])) {
+            $job->maximumBytesBilled((int) $this->config['maximum_bytes_billed']);
+        }
+
+        if (isset($this->config['job_timeout_ms'])) {
+            $job->jobTimeoutMs((int) $this->config['job_timeout_ms']);
+        }
+
+        if (! empty($this->config['labels'])) {
+            $job->labels($this->config['labels']);
+        }
+
+        return $job;
+    }
+
+    /**
+     * @param  array<int, mixed>  $bindings
+     * @return array<int, mixed>
+     */
+    #[Override]
+    public function prepareBindings(array $bindings): array
+    {
+        return $this->normalizeBindings($bindings);
+    }
+
+    /**
+     * @param  array<int, mixed>  $bindings
+     * @return array<int, mixed>
+     */
     public function normalizeBindings(array $bindings): array
     {
-        return array_map(function ($value) {
+        return array_map(function (mixed $value): mixed {
             if ($value instanceof DateTimeInterface) {
                 return $this->client->timestamp($value);
             }
 
             return $value;
         }, $bindings);
+    }
+
+    /**
+     * BigQuery rejects untyped NULL query parameters, so null bindings are written
+     * into the SQL as literals where the column type can be inferred instead.
+     *
+     * @param  array<int, mixed>  $bindings
+     * @return array{0: string, 1: array<int, mixed>}
+     */
+    protected function inlineNullBindings(string $query, array $bindings): array
+    {
+        if (! array_is_list($bindings)) {
+            return [$query, $bindings];
+        }
+
+        if (! in_array(null, $bindings, true)) {
+            return [$query, $bindings];
+        }
+
+        $compiled = '';
+        $remaining = [];
+        $index = 0;
+        $quote = null;
+        $length = strlen($query);
+
+        for ($position = 0; $position < $length; $position++) {
+            $character = $query[$position];
+
+            if ($quote !== null) {
+                $compiled .= $character;
+
+                if ($character === '\\') {
+                    $compiled .= $query[++$position] ?? '';
+
+                    continue;
+                }
+
+                if ($character === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+
+            if ($character === "'" || $character === '"' || $character === '`') {
+                $quote = $character;
+                $compiled .= $character;
+
+                continue;
+            }
+
+            if ($character !== '?' || ! array_key_exists($index, $bindings)) {
+                $compiled .= $character;
+
+                continue;
+            }
+
+            $value = $bindings[$index++];
+
+            if ($value === null) {
+                $compiled .= 'null';
+
+                continue;
+            }
+
+            $remaining[] = $value;
+            $compiled .= '?';
+        }
+
+        return [$compiled, array_merge($remaining, array_slice($bindings, $index))];
     }
 }

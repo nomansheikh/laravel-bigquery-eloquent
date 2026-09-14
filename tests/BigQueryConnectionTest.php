@@ -1,42 +1,23 @@
 <?php
 
-use Google\Cloud\BigQuery\BigQueryClient;
-use Google\Cloud\BigQuery\QueryJobConfiguration;
-use Google\Cloud\BigQuery\QueryResults;
 use Google\Cloud\BigQuery\Timestamp;
+use Illuminate\Support\Facades\DB;
 use NomanSheikh\LaravelBigqueryEloquent\BigQueryConnection;
 use NomanSheikh\LaravelBigqueryEloquent\Query\BigQueryGrammar;
+use NomanSheikh\LaravelBigqueryEloquent\Tests\Support\BigQuerySpy;
 
 it('registers the bigquery connection', function () {
     $connection = DB::connection('bigquery');
 
     expect($connection)->toBeInstanceOf(BigQueryConnection::class)
         ->and($connection->getProjectId())->toBe('test-project')
-        ->and($connection->getDefaultDataset())->toBe('default_dataset');
-});
-
-it('grammar wraps fully qualified table', function () {
-    $connection = DB::connection('bigquery');
-    $grammar = $connection->getQueryGrammar();
-
-    $ref = new ReflectionClass($grammar);
-    $method = $ref->getMethod('wrapTable');
-
-    $wrapped = $method->invoke($grammar, 'my-project.my_dataset.my_table');
-
-    expect($wrapped)->toBe('`my-project.my_dataset.my_table`');
-});
-
-it('uses the BigQueryGrammar on the connection', function () {
-    $connection = DB::connection('bigquery');
-
-    expect($connection->getQueryGrammar())->toBeInstanceOf(BigQueryGrammar::class);
+        ->and($connection->getDefaultDataset())->toBe('default_dataset')
+        ->and($connection->getDriverName())->toBe('bigquery')
+        ->and($connection->getQueryGrammar())->toBeInstanceOf(BigQueryGrammar::class);
 });
 
 it('uses microsecond precision for the grammar date format', function () {
-    $grammar = DB::connection('bigquery')->getQueryGrammar();
-
-    expect($grammar->getDateFormat())->toBe('Y-m-d H:i:s.u');
+    expect(DB::connection('bigquery')->getQueryGrammar()->getDateFormat())->toBe('Y-m-d H:i:s.u');
 });
 
 it('throws when getPdo is called', function () {
@@ -76,6 +57,17 @@ it('falls back to package config when connection config omits keys', function ()
         ->and($connection->getDefaultDataset())->toBe('fallback_dataset');
 });
 
+it('prefers connection config over package config', function () {
+    config()->set('bigquery-eloquent.project_id', 'fallback-project');
+    config()->set('database.connections.bigquery_explicit', [
+        'driver' => 'bigquery',
+        'project_id' => 'explicit-project',
+        'dataset' => 'explicit_dataset',
+    ]);
+
+    expect(DB::connection('bigquery_explicit')->getProjectId())->toBe('explicit-project');
+});
+
 it('accepts an array key_file without throwing', function () {
     config()->set('database.connections.bigquery_array_key', [
         'driver' => 'bigquery',
@@ -107,10 +99,15 @@ it('accepts a string key_file path without throwing', function () {
 
 it('normalizes DateTimeInterface bindings to BigQuery Timestamp', function () {
     $connection = DB::connection('bigquery');
-    $datetime = new DateTime('2025-01-15 10:00:00');
-    $immutable = new DateTimeImmutable('2025-06-20 12:30:45');
 
-    $normalized = $connection->normalizeBindings([$datetime, 'a string', 42, null, true, $immutable]);
+    $normalized = $connection->normalizeBindings([
+        new DateTime('2025-01-15 10:00:00'),
+        'a string',
+        42,
+        null,
+        true,
+        new DateTimeImmutable('2025-06-20 12:30:45'),
+    ]);
 
     expect($normalized[0])->toBeInstanceOf(Timestamp::class)
         ->and($normalized[1])->toBe('a string')
@@ -121,85 +118,70 @@ it('normalizes DateTimeInterface bindings to BigQuery Timestamp', function () {
 });
 
 it('returns an empty array when normalizing empty bindings', function () {
-    $connection = DB::connection('bigquery');
-
-    expect($connection->normalizeBindings([]))->toBe([]);
+    expect(DB::connection('bigquery')->normalizeBindings([]))->toBe([]);
 });
-
-function injectMockBigQueryClient(BigQueryConnection $connection, array $info): void
-{
-    $config = Mockery::mock(QueryJobConfiguration::class);
-    $config->shouldReceive('parameters')->andReturnSelf();
-
-    $result = Mockery::mock(QueryResults::class);
-    $result->shouldReceive('info')->andReturn($info);
-    $result->shouldReceive('rows')->andReturn([]);
-    $result->shouldReceive('isComplete')->andReturnTrue();
-
-    $client = Mockery::mock(BigQueryClient::class);
-    $client->shouldReceive('query')->andReturn($config);
-    $client->shouldReceive('runQuery')->andReturn($result);
-
-    $reflection = new ReflectionProperty($connection, 'client');
-    $reflection->setValue($connection, $client);
-}
 
 it('update returns numDmlAffectedRows as int', function () {
     $connection = DB::connection('bigquery');
-    injectMockBigQueryClient($connection, ['numDmlAffectedRows' => '7']);
+    BigQuerySpy::attach($connection, info: ['numDmlAffectedRows' => '7']);
 
-    $affected = $connection->table('test-project.default_dataset.users')->where('id', 1)->update(['name' => 'foo']);
-
-    expect($affected)->toBe(7);
+    expect($connection->table('users')->where('id', 1)->update(['name' => 'foo']))->toBe(7);
 });
 
 it('delete returns numDmlAffectedRows as int', function () {
     $connection = DB::connection('bigquery');
-    injectMockBigQueryClient($connection, ['numDmlAffectedRows' => '3']);
+    BigQuerySpy::attach($connection, info: ['numDmlAffectedRows' => '3']);
 
-    $affected = $connection->table('test-project.default_dataset.users')->where('id', 1)->delete();
-
-    expect($affected)->toBe(3);
+    expect($connection->table('users')->where('id', 1)->delete())->toBe(3);
 });
 
 it('update returns 0 when DML stats are not in result info', function () {
     $connection = DB::connection('bigquery');
-    injectMockBigQueryClient($connection, []);
+    BigQuerySpy::attach($connection);
 
-    $affected = $connection->table('test-project.default_dataset.users')->where('id', 1)->update(['name' => 'foo']);
-
-    expect($affected)->toBe(0);
+    expect($connection->table('users')->where('id', 1)->update(['name' => 'foo']))->toBe(0);
 });
 
 it('insert returns true on success', function () {
     $connection = DB::connection('bigquery');
-    injectMockBigQueryClient($connection, []);
+    $spy = BigQuerySpy::attach($connection);
 
-    $ok = $connection->table('test-project.default_dataset.users')->insert(['name' => 'foo']);
-
-    expect($ok)->toBeTrue();
+    expect($connection->table('users')->insert(['name' => 'foo']))->toBeTrue()
+        ->and($spy->sql)->toBe('insert into `test-project.default_dataset.users` (`name`) values (?)');
 });
 
 it('insert handles batch rows', function () {
     $connection = DB::connection('bigquery');
-    injectMockBigQueryClient($connection, []);
+    $spy = BigQuerySpy::attach($connection);
 
-    $ok = $connection->table('test-project.default_dataset.users')->insert([
+    $inserted = $connection->table('users')->insert([
         ['name' => 'a'],
         ['name' => 'b'],
     ]);
 
-    expect($ok)->toBeTrue();
+    expect($inserted)->toBeTrue()
+        ->and($spy->sql)->toBe('insert into `test-project.default_dataset.users` (`name`) values (?), (?)')
+        ->and($spy->parameters)->toBe(['a', 'b']);
+});
+
+it('insert writes null columns as literals', function () {
+    $connection = DB::connection('bigquery');
+    $spy = BigQuerySpy::attach($connection);
+
+    $connection->table('users')->insert(['name' => null, 'age' => 3]);
+
+    expect($spy->sql)->toBe('insert into `test-project.default_dataset.users` (`name`, `age`) values (null, ?)')
+        ->and($spy->parameters)->toBe([3]);
 });
 
 it('insert returns true on empty values without hitting the client', function () {
     $connection = DB::connection('bigquery');
+    $spy = BigQuerySpy::attach($connection);
 
-    expect($connection->table('test-project.default_dataset.users')->insert([]))->toBeTrue();
+    expect($connection->table('users')->insert([]))->toBeTrue()
+        ->and($spy->ranQuery)->toBeFalse();
 });
 
 it('insertGetId throws because BigQuery has no auto-increment', function () {
-    DB::connection('bigquery')
-        ->table('test-project.default_dataset.users')
-        ->insertGetId(['name' => 'foo']);
+    DB::connection('bigquery')->table('users')->insertGetId(['name' => 'foo']);
 })->throws(LogicException::class, 'BigQuery does not support auto-incrementing keys');

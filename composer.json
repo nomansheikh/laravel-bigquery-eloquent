@@ -64,10 +64,7 @@
         "laravel": {
             "providers": [
                 "NomanSheikh\\LaravelBigqueryEloquent\\LaravelBigqueryEloquentServiceProvider"
-            ],
-            "aliases": {
-                "LaravelBigqueryEloquent": "NomanSheikh\\LaravelBigqueryEloquent\\Facades\\LaravelBigqueryEloquent"
-            }
+            ]
         }
     },
     "minimum-stability": "dev",

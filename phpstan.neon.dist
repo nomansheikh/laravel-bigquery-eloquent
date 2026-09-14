@@ -1,11 +1,14 @@
-includes:
-    - phpstan-baseline.neon
-
 parameters:
-    level: 5
+    level: 8
     paths:
         - src
         - config
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true
+    ignoreErrors:
+        # This package ships its own config directory, which larastan only recognises
+        # at the application's config path.
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: config/bigquery-eloquent.php
