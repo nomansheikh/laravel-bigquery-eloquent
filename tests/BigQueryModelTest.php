@@ -34,7 +34,7 @@ it('generates correct sql for BigQuery', function () {
         ->toSql();
 
     expect($query)
-        ->toBe('select `t`.`user_id`, `t`.`salary`, `t`.`job_title` from `test-project.default_dataset.test_jobs` as `t` where `salary` > ?');
+        ->toBe('select `t`.`user_id`, `t`.`salary`, `t`.`job_title` from `test-project`.`default_dataset`.`test_jobs` as `t` where `salary` > ?');
 });
 
 it('model can be used with alias in from', function () {
@@ -45,7 +45,7 @@ it('model can be used with alias in from', function () {
 
     $sql = $model->from($model->getTable().' as j')->select('j.user_id')->toSql();
 
-    expect($sql)->toBe('select `j`.`user_id` from `test-project.default_dataset.test_jobs` as `j`');
+    expect($sql)->toBe('select `j`.`user_id` from `test-project`.`default_dataset`.`test_jobs` as `j`');
 });
 
 it('generates where null syntax', function () {
@@ -56,7 +56,7 @@ it('generates where null syntax', function () {
 
     $sql = $model->whereNull('deleted_at')->toSql();
 
-    expect($sql)->toBe('select * from `test-project.default_dataset.test_jobs` where `deleted_at` is null');
+    expect($sql)->toBe('select * from `test-project`.`default_dataset`.`test_jobs` where `deleted_at` is null');
 });
 
 it('generates where in syntax with bindings', function () {
@@ -67,7 +67,7 @@ it('generates where in syntax with bindings', function () {
 
     $sql = $model->whereIn('user_id', [1, 2])->toSql();
 
-    expect($sql)->toBe('select * from `test-project.default_dataset.test_jobs` where `user_id` in (?, ?)');
+    expect($sql)->toBe('select * from `test-project`.`default_dataset`.`test_jobs` where `user_id` in (?, ?)');
 });
 
 it('applies limit and offset with forPage', function () {
@@ -78,7 +78,7 @@ it('applies limit and offset with forPage', function () {
 
     $sql = $model->forPage(2, 10)->toSql();
 
-    expect($sql)->toBe('select * from `test-project.default_dataset.test_jobs` limit 10 offset 10');
+    expect($sql)->toBe('select * from `test-project`.`default_dataset`.`test_jobs` limit 10 offset 10');
 });
 
 it('qualifies columns with the table reference rather than the full path', function () {
@@ -98,7 +98,7 @@ it('generates a valid lookup by key', function () {
     };
 
     expect($model->whereKey(1)->toSql())
-        ->toBe('select * from `test-project.default_dataset.test_jobs` where `test_jobs`.`id` = ?');
+        ->toBe('select * from `test-project`.`default_dataset`.`test_jobs` where `test_jobs`.`id` = ?');
 });
 
 it('generates a valid relation constraint', function () {
@@ -106,7 +106,7 @@ it('generates a valid relation constraint', function () {
     $parent->id = 1;
 
     expect($parent->children()->toSql())
-        ->toBe('select * from `test-project.default_dataset.test_jobs` where `test_jobs`.`parent_id` = ? and `test_jobs`.`parent_id` is not null');
+        ->toBe('select * from `test-project`.`default_dataset`.`test_jobs` where `test_jobs`.`parent_id` = ? and `test_jobs`.`parent_id` is not null');
 });
 
 it('defaults to non incrementing string keys', function () {

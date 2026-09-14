@@ -28,7 +28,7 @@ it('finds a record by key with SQL BigQuery accepts', function () {
 
     $event = AnalyticsEvent::find('evt_1');
 
-    expect($spy->sql)->toBe('select * from `test-project.default_dataset.events` where `events`.`id` = ? limit 1')
+    expect($spy->sql)->toBe('select * from `test-project`.`default_dataset`.`events` where `events`.`id` = ? limit 1')
         ->and($spy->parameters)->toBe(['evt_1'])
         ->and($event)->toBeInstanceOf(AnalyticsEvent::class)
         ->and($event->name)->toBe('signup');
@@ -51,7 +51,7 @@ it('creates a record without asking BigQuery for an inserted id', function () {
 
     $event = AnalyticsEvent::create(['id' => 'evt_2', 'name' => 'purchase']);
 
-    expect($spy->sql)->toBe('insert into `test-project.default_dataset.events` (`id`, `name`) values (?, ?)')
+    expect($spy->sql)->toBe('insert into `test-project`.`default_dataset`.`events` (`id`, `name`) values (?, ?)')
         ->and($spy->parameters)->toBe(['evt_2', 'purchase'])
         ->and($event->exists)->toBeTrue();
 });
@@ -65,7 +65,7 @@ it('updates a record through the model', function () {
     $event->name = 'refund';
     $event->save();
 
-    expect($spy->sql)->toBe('update `test-project.default_dataset.events` set `name` = ? where `id` = ?')
+    expect($spy->sql)->toBe('update `test-project`.`default_dataset`.`events` set `name` = ? where `id` = ?')
         ->and($spy->parameters)->toBe(['refund', 'evt_2']);
 });
 
@@ -77,14 +77,14 @@ it('deletes a record through the model', function () {
     $event->syncOriginal();
     $event->delete();
 
-    expect($spy->sql)->toBe('delete from `test-project.default_dataset.events` where `id` = ?');
+    expect($spy->sql)->toBe('delete from `test-project`.`default_dataset`.`events` where `id` = ?');
 });
 
 it('counts records', function () {
     $spy = BigQuerySpy::attach(DB::connection('bigquery'), [['aggregate' => 12]]);
 
     expect(AnalyticsEvent::where('name', 'signup')->count())->toBe(12)
-        ->and($spy->sql)->toBe('select count(*) as aggregate from `test-project.default_dataset.events` where `name` = ?');
+        ->and($spy->sql)->toBe('select count(*) as aggregate from `test-project`.`default_dataset`.`events` where `name` = ?');
 });
 
 it('paginates', function () {
@@ -101,7 +101,7 @@ it('qualifies the updated at column with the table reference', function () {
 
     TimestampedEvent::where('id', 'evt_3')->update(['name' => 'refund']);
 
-    expect($spy->sql)->toBe('update `test-project.default_dataset.events` set `name` = ?, `events`.`updated_at` = ? where `id` = ?');
+    expect($spy->sql)->toBe('update `test-project`.`default_dataset`.`events` set `name` = ?, `events`.`updated_at` = ? where `id` = ?');
 });
 
 it('selects the table reference rather than the full path for withCount', function () {
@@ -109,7 +109,7 @@ it('selects the table reference rather than the full path for withCount', functi
 
     AnalyticsEvent::withCount('children')->get();
 
-    expect($spy->sql)->toStartWith('select `events`.*, (select count(*) from `test-project.default_dataset.events`');
+    expect($spy->sql)->toStartWith('select `events`.*, (select count(*) from `test-project`.`default_dataset`.`events`');
 });
 
 class TimestampedEvent extends BigQueryModel

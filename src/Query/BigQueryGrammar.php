@@ -34,12 +34,17 @@ class BigQueryGrammar extends Grammar
         $segments = preg_split('/\s+as\s+/i', (string) $table, 2);
 
         if ($segments === false || count($segments) < 2) {
-            return $this->wrapValue($this->qualifyTable((string) $table));
+            return $this->wrapSegments(explode('.', $this->qualifyTable((string) $table)));
         }
 
         return "{$this->wrapTable($segments[0])} as {$this->wrapValue($segments[1])}";
     }
 
+    /**
+     * Each path segment is wrapped on its own. A backtick-quoted `a.b.c` is a single
+     * identifier whose implicit alias is that whole string, while `a`.`b`.`c` is a path
+     * whose implicit alias is the last segment - which is what columns qualify against.
+     */
     protected function qualifyTable(string $table): string
     {
         if (str_contains($table, '.')) {
