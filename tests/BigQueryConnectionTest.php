@@ -147,7 +147,7 @@ it('insert returns true on success', function () {
     $spy = BigQuerySpy::attach($connection);
 
     expect($connection->table('users')->insert(['name' => 'foo']))->toBeTrue()
-        ->and($spy->sql)->toBe('insert into `test-project.default_dataset.users` (`name`) values (?)');
+        ->and($spy->sql)->toBe('insert into `test-project`.`default_dataset`.`users` (`name`) values (?)');
 });
 
 it('insert handles batch rows', function () {
@@ -160,7 +160,7 @@ it('insert handles batch rows', function () {
     ]);
 
     expect($inserted)->toBeTrue()
-        ->and($spy->sql)->toBe('insert into `test-project.default_dataset.users` (`name`) values (?), (?)')
+        ->and($spy->sql)->toBe('insert into `test-project`.`default_dataset`.`users` (`name`) values (?), (?)')
         ->and($spy->parameters)->toBe(['a', 'b']);
 });
 
@@ -170,7 +170,7 @@ it('insert writes null columns as literals', function () {
 
     $connection->table('users')->insert(['name' => null, 'age' => 3]);
 
-    expect($spy->sql)->toBe('insert into `test-project.default_dataset.users` (`name`, `age`) values (null, ?)')
+    expect($spy->sql)->toBe('insert into `test-project`.`default_dataset`.`users` (`name`, `age`) values (null, ?)')
         ->and($spy->parameters)->toBe([3]);
 });
 

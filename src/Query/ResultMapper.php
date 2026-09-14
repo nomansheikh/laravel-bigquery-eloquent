@@ -19,6 +19,10 @@ class ResultMapper
         return array_map($this->mapValue(...), $row);
     }
 
+    /**
+     * Bytes::get() hands back a PSR-7 stream, so it is read out to the raw binary
+     * string a BLOB column would produce on any other driver.
+     */
     public function mapValue(mixed $value): mixed
     {
         if (is_array($value)) {
@@ -26,7 +30,7 @@ class ResultMapper
         }
 
         if ($value instanceof Bytes) {
-            return $value->get();
+            return (string) $value->get();
         }
 
         if ($value instanceof ValueInterface) {

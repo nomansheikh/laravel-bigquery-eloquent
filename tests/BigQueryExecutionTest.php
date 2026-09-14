@@ -1,5 +1,6 @@
 <?php
 
+use Google\Cloud\BigQuery\Bytes;
 use Google\Cloud\BigQuery\Numeric;
 use Google\Cloud\BigQuery\Timestamp;
 use Google\Cloud\Core\Exception\BadRequestException;
@@ -17,7 +18,7 @@ function bigQuery(): BigQueryConnection
 it('returns objects from select', function () {
     BigQuerySpy::attach(bigQuery(), [['id' => 1, 'name' => 'foo']]);
 
-    $rows = bigQuery()->select('select * from `p.d.t`');
+    $rows = bigQuery()->select('select * from `p`.`d`.`t`');
 
     expect($rows)->toHaveCount(1)
         ->and($rows[0])->toBeInstanceOf(stdClass::class)
@@ -31,7 +32,7 @@ it('unwraps BigQuery value objects into plain PHP values', function () {
         'tags' => ['a', 'b'],
     ]]);
 
-    $row = bigQuery()->select('select * from `p.d.t`')[0];
+    $row = bigQuery()->select('select * from `p`.`d`.`t`')[0];
 
     expect($row->ts)->toBe('2026-01-02 03:04:05.000000+00:00')
         ->and($row->amount)->toBe('1.50')
@@ -43,7 +44,7 @@ it('honors the columns passed to get', function () {
 
     bigQuery()->table('users')->get(['id', 'name']);
 
-    expect($spy->sql)->toBe('select `id`, `name` from `test-project.default_dataset.users`');
+    expect($spy->sql)->toBe('select `id`, `name` from `test-project`.`default_dataset`.`users`');
 });
 
 it('returns objects from the query builder', function () {
@@ -79,21 +80,21 @@ it('wraps BigQuery failures in a QueryException', function () {
 it('runs a raw statement', function () {
     $spy = BigQuerySpy::attach(bigQuery());
 
-    expect(bigQuery()->statement('create table `p.d.t` (id INT64)'))->toBeTrue()
-        ->and($spy->sql)->toBe('create table `p.d.t` (id INT64)');
+    expect(bigQuery()->statement('create table `p`.`d`.`t` (id INT64)'))->toBeTrue()
+        ->and($spy->sql)->toBe('create table `p`.`d`.`t` (id INT64)');
 });
 
 it('runs unprepared statements', function () {
     $spy = BigQuerySpy::attach(bigQuery());
 
-    expect(bigQuery()->unprepared('drop table `p.d.t`'))->toBeTrue()
-        ->and($spy->sql)->toBe('drop table `p.d.t`');
+    expect(bigQuery()->unprepared('drop table `p`.`d`.`t`'))->toBeTrue()
+        ->and($spy->sql)->toBe('drop table `p`.`d`.`t`');
 });
 
 it('returns affected rows from a raw affecting statement', function () {
     BigQuerySpy::attach(bigQuery(), info: ['numDmlAffectedRows' => '4']);
 
-    expect(bigQuery()->update('update `p.d.t` set a = ? where id = ?', [1, 2]))->toBe(4);
+    expect(bigQuery()->update('update `p`.`d`.`t` set a = ? where id = ?', [1, 2]))->toBe(4);
 });
 
 it('streams rows through cursor', function () {
@@ -101,7 +102,7 @@ it('streams rows through cursor', function () {
 
     $ids = [];
 
-    foreach (bigQuery()->cursor('select * from `p.d.t`') as $row) {
+    foreach (bigQuery()->cursor('select * from `p`.`d`.`t`') as $row) {
         $ids[] = $row->id;
     }
 
@@ -113,16 +114,16 @@ it('inlines null bindings because BigQuery rejects untyped null parameters', fun
 
     bigQuery()->table('users')->where('id', 5)->update(['name' => null, 'age' => 30]);
 
-    expect($spy->sql)->toBe('update `test-project.default_dataset.users` set `name` = null, `age` = ? where `id` = ?')
+    expect($spy->sql)->toBe('update `test-project`.`default_dataset`.`users` set `name` = null, `age` = ? where `id` = ?')
         ->and($spy->parameters)->toBe([30, 5]);
 });
 
 it('does not mistake a question mark inside a string literal for a placeholder', function () {
     $spy = BigQuerySpy::attach(bigQuery(), info: ['numDmlAffectedRows' => '1']);
 
-    bigQuery()->update("update `p.d.t` set label = 'what? really', note = ?, extra = ? where id = ?", [null, 'x', 1]);
+    bigQuery()->update("update `p`.`d`.`t` set label = 'what? really', note = ?, extra = ? where id = ?", [null, 'x', 1]);
 
-    expect($spy->sql)->toBe("update `p.d.t` set label = 'what? really', note = null, extra = ? where id = ?")
+    expect($spy->sql)->toBe("update `p`.`d`.`t` set label = 'what? really', note = null, extra = ? where id = ?")
         ->and($spy->parameters)->toBe(['x', 1]);
 });
 
@@ -172,14 +173,14 @@ it('passes the configured location to the BigQuery client', function () {
 it('builds a BigQuery query builder from query() and table()', function () {
     expect(bigQuery()->query())->toBeInstanceOf(BigQueryQueryBuilder::class)
         ->and(bigQuery()->table('users', 'u')->toSql())
-        ->toBe('select * from `test-project.default_dataset.users` as `u`');
+        ->toBe('select * from `test-project`.`default_dataset`.`users` as `u`');
 });
 
 it('scopes delete($id) to the table reference BigQuery understands', function () {
     $spy = BigQuerySpy::attach(bigQuery(), info: ['numDmlAffectedRows' => '1']);
 
     expect(bigQuery()->table('users')->delete(42))->toBe(1)
-        ->and($spy->sql)->toBe('delete from `test-project.default_dataset.users` where `users`.`id` = ?')
+        ->and($spy->sql)->toBe('delete from `test-project`.`default_dataset`.`users` where `users`.`id` = ?')
         ->and($spy->parameters)->toBe([42]);
 });
 
@@ -188,6 +189,14 @@ it('keeps raw expressions out of update bindings', function () {
 
     bigQuery()->table('users')->where('id', 5)->update(['visits' => DB::raw('visits + 1')]);
 
-    expect($spy->sql)->toBe('update `test-project.default_dataset.users` set `visits` = visits + 1 where `id` = ?')
+    expect($spy->sql)->toBe('update `test-project`.`default_dataset`.`users` set `visits` = visits + 1 where `id` = ?')
         ->and($spy->parameters)->toBe([5]);
+});
+
+it('reads BYTES columns out to a raw binary string', function () {
+    BigQuerySpy::attach(bigQuery(), [['raw' => new Bytes('abc')]]);
+
+    $value = bigQuery()->select('select raw from `p`.`d`.`t`')[0]->raw;
+
+    expect($value)->toBeString()->toBe('abc');
 });
