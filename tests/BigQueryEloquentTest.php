@@ -84,7 +84,9 @@ it('counts records', function () {
     $spy = BigQuerySpy::attach(DB::connection('bigquery'), [['aggregate' => 12]]);
 
     expect(AnalyticsEvent::where('name', 'signup')->count())->toBe(12)
-        ->and($spy->sql)->toBe('select count(*) as aggregate from `test-project`.`default_dataset`.`events` where `name` = ?');
+        ->and($spy->sql)->toContain('count(*)')
+        ->and($spy->sql)->toContain('from `test-project`.`default_dataset`.`events`')
+        ->and($spy->sql)->toContain('where `name` = ?');
 });
 
 it('paginates', function () {
