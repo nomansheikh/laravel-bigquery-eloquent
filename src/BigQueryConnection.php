@@ -181,11 +181,15 @@ class BigQueryConnection extends Connection
     }
 
     /**
+     * $fetchUsing drives PDO fetch modes on Laravel 13 and has no meaning here. It is
+     * accepted so the signature satisfies both Laravel 12 and 13.
+     *
      * @param  array<int, mixed>  $bindings
+     * @param  array<mixed>  $fetchUsing
      * @return array<int, object>
      */
     #[Override]
-    public function select($query, $bindings = [], $useReadPdo = true): array
+    public function select($query, $bindings = [], $useReadPdo = true, array $fetchUsing = []): array
     {
         return $this->run($query, $bindings, function (string $query, array $bindings): array {
             if ($this->pretending()) {
@@ -204,10 +208,11 @@ class BigQueryConnection extends Connection
 
     /**
      * @param  array<int, mixed>  $bindings
+     * @param  array<mixed>  $fetchUsing
      * @return Generator<int, object>
      */
     #[Override]
-    public function cursor($query, $bindings = [], $useReadPdo = true): Generator
+    public function cursor($query, $bindings = [], $useReadPdo = true, array $fetchUsing = []): Generator
     {
         $results = $this->run($query, $bindings, function (string $query, array $bindings): ?QueryResults {
             if ($this->pretending()) {
