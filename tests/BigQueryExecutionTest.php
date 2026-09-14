@@ -1,5 +1,6 @@
 <?php
 
+use Google\Cloud\BigQuery\Bytes;
 use Google\Cloud\BigQuery\Numeric;
 use Google\Cloud\BigQuery\Timestamp;
 use Google\Cloud\Core\Exception\BadRequestException;
@@ -190,4 +191,12 @@ it('keeps raw expressions out of update bindings', function () {
 
     expect($spy->sql)->toBe('update `test-project`.`default_dataset`.`users` set `visits` = visits + 1 where `id` = ?')
         ->and($spy->parameters)->toBe([5]);
+});
+
+it('reads BYTES columns out to a raw binary string', function () {
+    BigQuerySpy::attach(bigQuery(), [['raw' => new Bytes('abc')]]);
+
+    $value = bigQuery()->select('select raw from `p`.`d`.`t`')[0]->raw;
+
+    expect($value)->toBeString()->toBe('abc');
 });
