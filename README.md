@@ -32,7 +32,7 @@
 ## Requirements
 
 - PHP 8.3 or higher
-- Laravel 12.x
+- Laravel 12.x or 13.x
 - Access to Google Cloud BigQuery API
 - Google Cloud authentication (Application Default Credentials recommended)
 
