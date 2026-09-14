@@ -55,7 +55,7 @@ composer require nomansheikh/laravel-bigquery-eloquent
 Run the following Artisan command to publish the package config:
 
 ```bash
-php artisan vendor:publish --provider="NomanSheikh\LaravelBigqueryEloquent\LaravelBigqueryEloquentServiceProvider"
+php artisan vendor:publish --tag="bigquery-eloquent-config"
 ```
 
 ### 2. Authentication Setup
@@ -70,18 +70,18 @@ The package supports Google Cloud's recommended authentication hierarchy:
   - Download a JSON key file from Google Cloud Console.
   - Set the `BIGQUERY_KEY_FILE` environment variable pointing to the JSON file (not recommended for production).
 
-#### Authentication Hierarchy
+#### How credentials are resolved
 
-The Google Client library authenticates in this order:
+`key_file` accepts either a path to a JSON key file or the credentials array itself.
+If it is set, it is used directly. If it is empty or absent, the Google client falls
+back to Application Default Credentials, which it resolves in this order:
 
-1. `key_file` specified in the database config.
-2. `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
-3. Default credential file locations.
-4. Google App Engine built-in service account.
-5. Google Compute Engine built-in service account.
-6. Direct credentials array in config.
+1. The `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
+2. The well-known ADC file (`gcloud auth application-default login` writes this).
+3. The App Engine built-in service account.
+4. The Compute Engine / GKE / Cloud Run metadata service.
 
-Example direct credentials array in `config/database.php`:
+Example credentials array in `config/database.php`:
 
 ```php
 'bigquery' => [
@@ -184,6 +184,10 @@ class UserAnalytics extends BigQueryModel
 }
 ```
 
+> **Timestamps.** Eloquent's timestamps are on by default, so the BigQuery table needs
+> `created_at` and `updated_at` `TIMESTAMP` columns. Set `public $timestamps = false;`
+> on the model if it does not have them, otherwise every write fails.
+
 ### Reading
 
 ```php
@@ -230,7 +234,45 @@ DB::connection('bigquery')->table('project.dataset.user_analytics')->insert([
 ]);
 ```
 
-`Carbon` / `DateTimeInterface` values in bindings are automatically wrapped as BigQuery `Timestamp`, and the package preserves microsecond precision when serializing dates.
+#### Binding types
+
+`Carbon` / `DateTimeInterface` values are wrapped as a BigQuery `Timestamp`, preserving
+microseconds. That is the right type for a `TIMESTAMP` column, but BigQuery will not
+compare a `TIMESTAMP` parameter against a `DATE`, `DATETIME`, or `TIME` column, and it
+will not compare a `STRING` parameter against a `NUMERIC` column:
+
+```
+No matching signature for operator = for argument types: DATE, TIMESTAMP
+```
+
+The driver cannot infer the column type from a PHP value, so pass the matching BigQuery
+value object for those columns. They are forwarded to the API untouched:
+
+```php
+$client = DB::connection('bigquery')->getClient();
+
+UserAnalytics::where('signup_date', $client->date(now()))->get();       // DATE
+UserAnalytics::where('clock_in', $client->time(now()))->get();          // TIME
+UserAnalytics::where('revenue', $client->numeric('1250.75'))->get();    // NUMERIC
+UserAnalytics::where('blob', $client->bytes($binary))->get();           // BYTES
+```
+
+`whereDate()`, `whereMonth()`, `whereYear()` and `whereTime()` already cast their
+parameters, so they work on `TIMESTAMP` and `DATE` columns without this.
+
+#### Reading values
+
+BigQuery's SDK value objects are unwrapped before they reach your model, so `$casts`
+behaves normally:
+
+| BigQuery type | PHP value |
+| --- | --- |
+| `TIMESTAMP` / `DATETIME` | string, microsecond precision, castable to `datetime` |
+| `DATE` / `TIME` | `Y-m-d` / `H:i:s.u` string |
+| `NUMERIC` / `BIGNUMERIC` | string, so precision a float would lose is kept |
+| `BYTES` | raw binary string |
+| `JSON` / `GEOGRAPHY` | string |
+| `STRUCT` / `ARRAY` | array, unwrapped recursively |
 
 ### Raw Queries
 
@@ -282,13 +324,16 @@ These are inherent BigQuery characteristics, not bugs in the package:
 
 v3 fixes identifier quoting and column qualification, which changes the SQL the package emits.
 
-- **Columns are now backtick-quoted per segment.** `t.user_id` compiles to `` `t`.`user_id` `` instead of being passed through raw, and table aliases are quoted too. Identifiers containing backticks now have them stripped rather than being interpolated verbatim, which closes an injection hole in `orderBy()` / `where()` when the column name came from request input.
+- **Identifiers are backtick-quoted per segment.** `t.user_id` compiles to `` `t`.`user_id` ``, and a table compiles to `` `project`.`dataset`.`table` `` rather than `` `project.dataset.table` ``. The single-quoted form is one identifier as far as BigQuery is concerned, so its implicit alias is the whole `project.dataset.table` string and `table.column` does not resolve. Identifiers containing backticks now have them stripped rather than being interpolated verbatim, which closes an injection hole in `orderBy()` / `where()` when the column name came from request input.
 - **Columns are qualified with the table reference, not the full path.** `Model::find()`, relations, and `withCount()` previously emitted `project.dataset.table.column`, which BigQuery rejects. They now emit `table.column`.
 - **`get()` returns `stdClass` rows**, matching Laravel's query builder contract, instead of arrays. Eloquent models are unaffected.
 - **BigQuery value objects are unwrapped.** `TIMESTAMP`, `DATE`, `NUMERIC`, and `BYTES` columns hydrate as PHP strings rather than `Google\Cloud\BigQuery\*` objects, so `$casts` works as expected.
 - **`BigQueryModel` defaults to `$incrementing = false` and `$keyType = 'string'`.** Models that already set these are unaffected.
 - **`delete($id)` now scopes to that key** instead of ignoring the argument and deleting everything matching the current constraints.
 - **The empty `LaravelBigqueryEloquent` class, its facade, and the `LaravelBigqueryEloquent` alias were removed.** None of them were ever functional.
+- **`lockForUpdate()` and `sharedLock()` now throw.** They previously compiled to nothing and silently returned unlocked rows.
+- **`update()` and `delete()` with joins now throw.** They previously emitted MySQL-shaped SQL that BigQuery rejects, pointing you at `MERGE` instead.
+- **`BYTES` columns hydrate as a raw binary string** rather than a PSR-7 stream object.
 - **Laravel 11 is no longer supported.** Its query grammar has no reference to the connection, so the driver could never resolve `project.dataset` for an unqualified table name on 11. Laravel 11 reached end of life on 2026-03-12.
 
 ---
@@ -300,6 +345,18 @@ Run the test suite with:
 ```bash
 composer test
 ```
+
+The suite mocks the BigQuery client, so it verifies the SQL the driver emits but not
+that BigQuery accepts it. A live smoke test covers the rest:
+
+```bash
+BIGQUERY_SMOKE_PROJECT=your-project composer test-smoke
+```
+
+It creates a throwaway `laravel_bq_smoke_*` dataset, exercises reads, writes, and the
+BigQuery-specific SQL against it, then drops the dataset. Nothing outside that dataset
+is written to. It needs a billing-enabled project — the BigQuery sandbox does not
+support DML — and scans a few megabytes, well inside the 1 TiB monthly free tier.
 
 ---
 
