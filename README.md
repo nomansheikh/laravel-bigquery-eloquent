@@ -32,7 +32,7 @@
 ## Requirements
 
 - PHP 8.3 or higher
-- Laravel 11.x or 12.x
+- Laravel 12.x
 - Access to Google Cloud BigQuery API
 - Google Cloud authentication (Application Default Credentials recommended)
 
@@ -289,6 +289,7 @@ v3 fixes identifier quoting and column qualification, which changes the SQL the 
 - **`BigQueryModel` defaults to `$incrementing = false` and `$keyType = 'string'`.** Models that already set these are unaffected.
 - **`delete($id)` now scopes to that key** instead of ignoring the argument and deleting everything matching the current constraints.
 - **The empty `LaravelBigqueryEloquent` class, its facade, and the `LaravelBigqueryEloquent` alias were removed.** None of them were ever functional.
+- **Laravel 11 is no longer supported.** Its query grammar has no reference to the connection, so the driver could never resolve `project.dataset` for an unqualified table name on 11. Laravel 11 reached end of life on 2026-03-12.
 
 ---
 
